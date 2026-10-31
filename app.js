@@ -8,6 +8,22 @@ let state=loadState(),history=[JSON.stringify(state)],historyIndex=0,restoring=f
 function checkpoint(){if(restoring)return;const snapshot=JSON.stringify(state);if(snapshot===history[historyIndex])return;history=history.slice(0,historyIndex+1);history.push(snapshot);if(history.length>100)history.shift();historyIndex=history.length-1;try{localStorage.setItem('devden-toolkit-v2',snapshot)}catch{}}
 function travelHistory(direction){const next=historyIndex+direction;if(next<0||next>=history.length)return;historyIndex=next;restoring=true;state=JSON.parse(history[next]);navigate(active);restoring=false;try{localStorage.setItem('devden-toolkit-v2',history[next])}catch{}}
 document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const target=e.target;if(target.closest('input,textarea,[contenteditable="true"]'))return;const key=e.key.toLowerCase();if(key==='z'){e.preventDefault();travelHistory(e.shiftKey?1:-1)}else if(key==='y'){e.preventDefault();travelHistory(1)}});
+const konamiSequence=['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
+let konamiPosition=0,konamiTimeout=null;
+document.addEventListener('keydown',e=>{
+ if(e.repeat||e.ctrlKey||e.altKey||e.metaKey||e.target.closest('input,textarea,select,[contenteditable]'))return;
+ const key=e.key.toLowerCase();
+ konamiPosition=key===konamiSequence[konamiPosition]?konamiPosition+1:(key===konamiSequence[0]?1:0);
+ if(konamiPosition===konamiSequence.length){konamiPosition=0;showKonami();}
+});
+function showKonami(){
+ let overlay=document.getElementById('devden-konami');
+ if(!overlay){overlay=document.createElement('div');overlay.id='devden-konami';overlay.setAttribute('role','status');overlay.setAttribute('aria-live','polite');document.body.append(overlay)}
+ overlay.innerHTML='<strong>DEV MODE ACTIVATED 💀</strong><span>ACCESS GRANTED · 1337 PACKETS ROUTED</span><code>root@devden:~# sudo make-me-a-sandwich<br>&gt; Permission granted. Somehow.</code>';
+ overlay.hidden=false;
+ overlay.classList.remove('konami-show');void overlay.offsetWidth;overlay.classList.add('konami-show');
+ clearTimeout(konamiTimeout);konamiTimeout=setTimeout(()=>{overlay.hidden=true;overlay.classList.remove('konami-show')},5000);
+}
 document.addEventListener('change',e=>{if(active==='cli'||!content.contains(e.target))return;const inp=e.target;if(!inp.id||!['INPUT','SELECT'].includes(inp.tagName)||!['parent','target','count','prefix','group','decimal','hex','binary'].includes(inp.id))return;if(inp.id==='decimal'||inp.id==='hex'||inp.id==='binary'||(active==='ipv6'&&inp.id==='group'))return;state.fields[active+':'+inp.id]=inp.value;checkpoint()});
 function navigate(k){active=k;[...nav.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.key===k));({ipv4:renderIpv4,ipv6:renderIpv6,vlsm:renderVlsm,flsm:renderFlsm,v6flsm:renderV6Flsm,commands:renderCommands,reference:renderReference,troubleshooting:renderTroubleshooting,cli:renderCli}[k])();}
 for(const [group,items] of sections){nav.append(el('div',{class:'nav-title'},group));for(const [name,k] of items){const b=el('button',{'data-key':k},'');b.append(el('span',{},name));b.onclick=()=>navigate(k);nav.append(b)}}$('logo').onclick=()=>$('sidebar').classList.toggle('collapsed');
@@ -157,9 +173,14 @@ function renderIpv4(){
   $('ipv4-67-easter-egg').textContent=value===67?'😂😂😂😂':'';
   $('ipv4-67-easter-egg').hidden=value!==67;
   $('ipv4-67-gif').hidden=value!==67;
+  updateSurprise(value);
   setStatus(`Decimal ${value}  |  Hex 0x${$('hex').value}  |  Binary ${$('binary').value}`);
   if(focusIndex!==null)focus(focusIndex);
  }
+ const eggMessages={42:'Yeah, we know. The answer sucks. 🌌',69:'😏 Nice.',1337:'H4CK3R M0D3 ACTIVATED 💻',65535:'FINAL BOSS: 16-BIT INTEGER 👑'};
+ const surprise=el('span',{id:'ipv4-number-easter-egg',class:'ipv4-number-easter-egg'});
+ surprise.hidden=true;
+ const updateSurprise=n=>{const msg=eggMessages[n];surprise.textContent=msg||'';surprise.hidden=!msg;};
  const resetBtn=el('button',{id:'reset'},'Reset');
  const toolbar=content.querySelector('.toolbar');
  toolbar.append(resetBtn);
@@ -167,6 +188,7 @@ function renderIpv4(){
  gif.hidden=true;
  gif.innerHTML='<img src="https://static2.klipy.com/ii/50d7c955398dfd7e3c8ba5281154280f/19/e6/gAYYDnTxcbptI8kIO.gif" alt="Bosnov 67 reaction GIF" loading="lazy">';
  toolbar.append(gif);
+ toolbar.append(surprise);
  wireReset('ipv4');
  $('bits').onclick=e=>{const b=e.target.closest('[data-bit]');if(!b)return;const i=15-Number(b.dataset.bit);value^=1<<Number(b.dataset.bit);state.ipv4=value;checkpoint();paint(i)};
  $('bits').onkeydown=e=>{
@@ -175,7 +197,7 @@ function renderIpv4(){
   if(e.key==='Enter'||e.key===' '){e.preventDefault();value^=1<<Number(b.dataset.bit);state.ipv4=value;checkpoint();paint(i);return}
   const step=gridStep(i,e.key);if(!step)return;e.preventDefault();if(!step.edge)focus(step.index);
  };
- $('decimal').addEventListener('input',()=>{const raw=$('decimal').value.trim();const egg=$('ipv4-67-easter-egg');const show=raw==='67';egg.textContent=show?'😂😂😂😂':'';egg.hidden=!show;$('ipv4-67-gif').hidden=!show;});
+ $('decimal').addEventListener('input',()=>{const raw=$('decimal').value.trim();const egg=$('ipv4-67-easter-egg');const show=raw==='67';egg.textContent=show?'😂😂😂😂':'';egg.hidden=!show;$('ipv4-67-gif').hidden=!show;const n=/^\d+$/.test(raw)?Number(raw):-1;updateSurprise(n);});
  for(const [id,radix] of [['decimal',10],['hex',16],['binary',2]]){
   $(id).onchange=()=>{const raw=$(id).value.trim();if(!raw||!new RegExp(radix===2?'^[01]+$':radix===16?'^[a-fA-F0-9]+$':'^\\d+$').test(raw)){setStatus('Invalid value',true);return}const n=parseInt(raw,radix);if(n>65535){setStatus('Maximum is 65535 (16 bits)',true);return}value=n;state.ipv4=value;checkpoint();paint()};
  }

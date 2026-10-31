@@ -5,3 +5,14 @@
 #ipv4-67-gif[hidden]{display:none!important}
 #ipv4-67-gif img{display:block;width:160px;height:110px;max-width:100%;object-fit:contain;border-radius:4px}
 @media(max-width:540px){#ipv4-67-gif:not([hidden]){margin-left:0;min-width:120px;min-height:88px}#ipv4-67-gif img{width:125px;height:90px}}
+
+/* Hidden number easter eggs live in their own toolbar slot. */
+#ipv4-number-easter-egg:not([hidden]){display:inline-flex;align-items:center;min-height:34px;padding:7px 12px;margin-left:8px;border:1px solid #6f8aaa;border-radius:5px;background:#26394d;color:#f0f5ff;font-weight:650;font-size:14px;white-space:normal;max-width:min(550px,100%)}
+#ipv4-number-easter-egg[hidden]{display:none!important}
+#devden-konami:not([hidden]){position:fixed;right:18px;bottom:18px;z-index:99999;pointer-events:none;display:flex;flex-direction:column;gap:9px;width:min(420px,calc(100vw - 36px));padding:22px;background:#06150c;color:#75ffa2;border:2px solid #49d579;border-radius:8px;box-shadow:0 0 40px rgba(40,215,92,.3);font:14px Consolas,monospace}
+#devden-konami[hidden]{display:none!important}
+#devden-konami strong{font-size:19px}
+#devden-konami code{display:block;padding:11px;border:1px solid #237844;background:#0a2414;color:#baffca;line-height:1.6;white-space:normal}
+#devden-konami.konami-show{animation:devden-konami-in .2s ease-out}
+@keyframes devden-konami-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:540px){#ipv4-number-easter-egg:not([hidden]){margin-left:0;font-size:12px}#devden-konami:not([hidden]){right:10px;bottom:10px;width:calc(100vw - 20px)}}
