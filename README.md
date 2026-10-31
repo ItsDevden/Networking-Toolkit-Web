@@ -9,3 +9,5 @@ Access the Networking Toolkit directly from your browser, on desktop or mobile. 
 For more information about the toolkit, its features, and its original desktop version, check out the main project:
 
 [**Networking Toolkit — Original Project**](https://github.com/ItsDevden/Networking-toolkit)
+
+Special thanks to Sulyo for being a bad influence and inspiring me to add a special interaction when you enter 67 in the Subnetting tab.
