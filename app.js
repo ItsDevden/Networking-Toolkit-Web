@@ -148,7 +148,7 @@ function gridStep(i,key){
 }
 function renderIpv4(){
  title('SUBNETTING  |  IPv4 ADDRESS EXPLORER','Explore 16 bits • decimal, hexadecimal, binary and clickable bits. Arrow keys move through the grid; Enter or Space toggles a bit.');
- content.insertAdjacentHTML('beforeend',`<div class="toolbar">${field('Decimal:','decimal',0,'number')}${field('Hex:','hex','0000')}${field('Binary:','binary','0000000000000000')}<span id="ipv4-67-easter-egg" class="ipv4-67-easter-egg" aria-live="polite" hidden></span></div><div class="card"><h2>16-BIT EDITOR</h2><div id="bits" class="bits"></div></div><div id="status" class="status"></div>`);
+ content.insertAdjacentHTML('beforeend',`<div class="toolbar">${field('Decimal:','decimal',0,'number').replace('</label>','<span id="ipv4-67-easter-egg" class="ipv4-67-easter-egg" aria-live="polite" hidden></span></label>')}${field('Hex:','hex','0000')}${field('Binary:','binary','0000000000000000')}</div><div class="card"><h2>16-BIT EDITOR</h2><div id="bits" class="bits"></div></div><div id="status" class="status"></div>`);
  let value=state.ipv4;
  function focus(i){$('bits').querySelector(`[data-bit="${15-i}"]`)?.focus()}
  function paint(focusIndex=null){
@@ -167,6 +167,7 @@ function renderIpv4(){
   if(e.key==='Enter'||e.key===' '){e.preventDefault();value^=1<<Number(b.dataset.bit);state.ipv4=value;checkpoint();paint(i);return}
   const step=gridStep(i,e.key);if(!step)return;e.preventDefault();if(!step.edge)focus(step.index);
  };
+ $('decimal').addEventListener('input',()=>{const raw=$('decimal').value.trim();const egg=$('ipv4-67-easter-egg');const show=raw==='67';egg.textContent=show?'😂😂😂😂':'';egg.hidden=!show;});
  for(const [id,radix] of [['decimal',10],['hex',16],['binary',2]]){
   $(id).onchange=()=>{const raw=$(id).value.trim();if(!raw||!new RegExp(radix===2?'^[01]+$':radix===16?'^[a-fA-F0-9]+$':'^\\d+$').test(raw)){setStatus('Invalid value',true);return}const n=parseInt(raw,radix);if(n>65535){setStatus('Maximum is 65535 (16 bits)',true);return}value=n;state.ipv4=value;checkpoint();paint()};
  }
