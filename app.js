@@ -148,12 +148,14 @@ function gridStep(i,key){
 }
 function renderIpv4(){
  title('SUBNETTING  |  IPv4 ADDRESS EXPLORER','Explore 16 bits • decimal, hexadecimal, binary and clickable bits. Arrow keys move through the grid; Enter or Space toggles a bit.');
- content.insertAdjacentHTML('beforeend',`<div class="toolbar">${field('Decimal:','decimal',0,'number')}${field('Hex:','hex','0000')}${field('Binary:','binary','0000000000000000')}</div><div class="card"><h2>16-BIT EDITOR</h2><div id="bits" class="bits"></div></div><div id="status" class="status"></div>`);
+ content.insertAdjacentHTML('beforeend',`<div class="toolbar">${field('Decimal:','decimal',0,'number')}${field('Hex:','hex','0000')}${field('Binary:','binary','0000000000000000')}<span id="ipv4-67-easter-egg" class="ipv4-67-easter-egg" aria-live="polite" hidden></span></div><div class="card"><h2>16-BIT EDITOR</h2><div id="bits" class="bits"></div></div><div id="status" class="status"></div>`);
  let value=state.ipv4;
  function focus(i){$('bits').querySelector(`[data-bit="${15-i}"]`)?.focus()}
  function paint(focusIndex=null){
   $('bits').innerHTML=Array.from({length:16},(_,i)=>{const power=15-i,on=!!(value&(1<<power));return `<div class="bit ${on?'on':''}" data-bit="${power}" tabindex="0" role="button" aria-label="Bit ${power}, value ${2**power}, ${on?'on':'off'}"><strong>${2**power}</strong><small>${on?1:0}</small></div>`}).join('');
   $('decimal').value=value;$('hex').value=value.toString(16).toUpperCase().padStart(4,'0');$('binary').value=value.toString(2).padStart(16,'0');
+  $('ipv4-67-easter-egg').textContent=value===67?'😂😂😂😂':'';
+  $('ipv4-67-easter-egg').hidden=value!==67;
   setStatus(`Decimal ${value}  |  Hex 0x${$('hex').value}  |  Binary ${$('binary').value}`);
   if(focusIndex!==null)focus(focusIndex);
  }
