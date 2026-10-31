@@ -156,10 +156,18 @@ function renderIpv4(){
   $('decimal').value=value;$('hex').value=value.toString(16).toUpperCase().padStart(4,'0');$('binary').value=value.toString(2).padStart(16,'0');
   $('ipv4-67-easter-egg').textContent=value===67?'😂😂😂😂':'';
   $('ipv4-67-easter-egg').hidden=value!==67;
+  $('ipv4-67-gif').hidden=value!==67;
   setStatus(`Decimal ${value}  |  Hex 0x${$('hex').value}  |  Binary ${$('binary').value}`);
   if(focusIndex!==null)focus(focusIndex);
  }
- const resetBtn=el('button',{id:'reset'},'Reset');content.querySelector('.toolbar').append(resetBtn);wireReset('ipv4');
+ const resetBtn=el('button',{id:'reset'},'Reset');
+ const toolbar=content.querySelector('.toolbar');
+ toolbar.append(resetBtn);
+ const gif=el('span',{id:'ipv4-67-gif',class:'ipv4-67-gif'});
+ gif.hidden=true;
+ gif.innerHTML='<img src="https://static2.klipy.com/ii/50d7c955398dfd7e3c8ba5281154280f/19/e6/gAYYDnTxcbptI8kIO.gif" alt="Bosnov 67 reaction GIF" loading="lazy">';
+ toolbar.append(gif);
+ wireReset('ipv4');
  $('bits').onclick=e=>{const b=e.target.closest('[data-bit]');if(!b)return;const i=15-Number(b.dataset.bit);value^=1<<Number(b.dataset.bit);state.ipv4=value;checkpoint();paint(i)};
  $('bits').onkeydown=e=>{
   const b=e.target.closest('[data-bit]');if(!b)return;
@@ -167,7 +175,7 @@ function renderIpv4(){
   if(e.key==='Enter'||e.key===' '){e.preventDefault();value^=1<<Number(b.dataset.bit);state.ipv4=value;checkpoint();paint(i);return}
   const step=gridStep(i,e.key);if(!step)return;e.preventDefault();if(!step.edge)focus(step.index);
  };
- $('decimal').addEventListener('input',()=>{const raw=$('decimal').value.trim();const egg=$('ipv4-67-easter-egg');const show=raw==='67';egg.textContent=show?'😂😂😂😂':'';egg.hidden=!show;});
+ $('decimal').addEventListener('input',()=>{const raw=$('decimal').value.trim();const egg=$('ipv4-67-easter-egg');const show=raw==='67';egg.textContent=show?'😂😂😂😂':'';egg.hidden=!show;$('ipv4-67-gif').hidden=!show;});
  for(const [id,radix] of [['decimal',10],['hex',16],['binary',2]]){
   $(id).onchange=()=>{const raw=$(id).value.trim();if(!raw||!new RegExp(radix===2?'^[01]+$':radix===16?'^[a-fA-F0-9]+$':'^\\d+$').test(raw)){setStatus('Invalid value',true);return}const n=parseInt(raw,radix);if(n>65535){setStatus('Maximum is 65535 (16 bits)',true);return}value=n;state.ipv4=value;checkpoint();paint()};
  }
