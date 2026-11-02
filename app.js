@@ -251,8 +251,6 @@ function renderCli(){title('ROUTER / SWITCH CLI','Offline Cisco IOS command gene
  drawCategories();
  const configs={hostname:['Hostname','R1'],domain:['Domain name','lab.local'],interface:['Interface','GigabitEthernet0/0'],ip:['IPv4 address','192.168.1.1'],mask:['Subnet mask','255.255.255.0'],gateway:['Next hop / gateway','192.168.1.254'],destination:['Destination network','10.10.0.0'],destmask:['Destination mask','255.255.0.0'],vlan:['VLAN ID','10'],vlanname:['VLAN name','USERS'],username:['Username','admin'],password:['Password','ChangeMe123!'],pool:['DHCP pool name','LAN'],network:['Network ID','192.168.1.0'],dns:['DNS server','8.8.8.8'],inside:['Inside interface','GigabitEthernet0/1'],outside:['Outside interface','GigabitEthernet0/0'],acl:['ACL number','1'],wildcard:['Wildcard mask','0.0.0.255'],source:['Source network','192.168.1.0'],protocol:['Protocol','tcp'],port:['Destination port','80']};const needs={'Basic setup':['hostname','domain'],'Interface IP':['interface','ip','mask'],'Management SVI':['vlan','ip','mask','gateway'],'Static route':['destination','destmask','gateway'],'Default route':['gateway'],'Create VLAN':['vlan','vlanname'],'Access VLAN port':['interface','vlan'],'SSH access':['hostname','domain','username','password'],'DHCP pool':['pool','network','mask','gateway','dns'],'NAT overload':['inside','outside','source','wildcard','acl'],'Standard ACL':['acl','source','wildcard'],'Extended ACL':['acl','protocol','source','wildcard','port'],'Show commands':[]};const vals=Object.fromEntries(Object.entries(configs).map(([k,v])=>[k,v[1]]));function update(){const v=k=>vals[k].trim(),t=$('task').value;let lines=[];switch(t){case'Basic setup':lines=['hostname '+v('hostname'),'no ip domain-lookup','ip domain-name '+v('domain'),'service password-encryption'];break;case'Interface IP':lines=['interface '+v('interface'),'ip address '+v('ip')+' '+v('mask'),'no shutdown','exit'];break;case'Management SVI':lines=['interface vlan '+v('vlan'),'ip address '+v('ip')+' '+v('mask'),'no shutdown','exit','ip default-gateway '+v('gateway')];break;case'Static route':lines=['ip route '+v('destination')+' '+v('destmask')+' '+v('gateway')];break;case'Default route':lines=['ip route 0.0.0.0 0.0.0.0 '+v('gateway')];break;case'Create VLAN':lines=['vlan '+v('vlan'),'name '+v('vlanname'),'exit'];break;case'Access VLAN port':lines=['interface '+v('interface'),'switchport mode access','switchport access vlan '+v('vlan'),'no shutdown','exit'];break;case'SSH access':lines=['hostname '+v('hostname'),'ip domain-name '+v('domain'),'username '+v('username')+' privilege 15 secret '+v('password'),'crypto key generate rsa modulus 2048','ip ssh version 2','line vty 0 4','login local','transport input ssh','exit'];break;case'DHCP pool':lines=['ip dhcp excluded-address '+v('gateway'),'ip dhcp pool '+v('pool'),'network '+v('network')+' '+v('mask'),'default-router '+v('gateway'),'dns-server '+v('dns'),'exit'];break;case'NAT overload':lines=['access-list '+v('acl')+' permit '+v('source')+' '+v('wildcard'),'interface '+v('inside'),'ip nat inside','exit','interface '+v('outside'),'ip nat outside','exit','ip nat inside source list '+v('acl')+' interface '+v('outside')+' overload'];break;case'Standard ACL':lines=['access-list '+v('acl')+' permit '+v('source')+' '+v('wildcard')];break;case'Extended ACL':lines=['ip access-list extended '+v('acl'),'permit '+v('protocol')+' '+v('source')+' '+v('wildcard')+' any eq '+v('port'),'exit'];break;case'Show commands':lines=refs.commands.map(x=>x[0])} $('preview').value=lines.join('\n')+'\n'}function changeTask(){state.cli=$('task').value;$('cli-settings-title').textContent=state.cli.toUpperCase()+'  •  SETTINGS';$('params').innerHTML=(needs[state.cli]||[]).map(k=>`<div class="card"><label>${esc(configs[k][0])}<input style="width:100%;margin-top:8px" data-param="${k}" value="${esc(vals[k])}"></label></div>`).join('');$('params').querySelectorAll('[data-param]').forEach(inp=>inp.oninput=()=>{vals[inp.dataset.param]=inp.value;update()});update()}$('task').onchange=changeTask;$('copycli').onclick=()=>copyValue($('preview').value,$('copycli'));$('savecli').onclick=()=>download('Cisco-'+state.cli.replaceAll(' ','-')+'.txt',$('preview').value);changeTask()}
 
-// Device checklist uses the existing localStorage state; it does not connect to any equipment.
-// Commands are examples for Cisco IOS/IOS XE; physical ports, features and release support vary.
 const checklistGuides={
  Router:[
  {id:'basic',name:'01  Basic Setup',note:'Prepare the device, name it and configure console behavior.',code:`! BASIC SETUP — Router (from Router> prompt)
@@ -899,8 +897,6 @@ show startup-config
 ! Have console access before making changes that may lose management.`}
  ]
 };
-// A terminal transcript for practice: no embedded explanations or pseudo-comments.
-// The copy/export actions use only executable command lines, not terminal prompts.
 function checklistCommands(guide){
  return String(guide?.code||'').split(/\r?\n/).map(x=>x.trim()).filter(x=>x && !x.startsWith('!'));
 }
@@ -1028,7 +1024,6 @@ function renderChecklist(){
 }
 
 
-// OSI reference is intentionally visual and non-competitive: no quizzes or gamification.
 const osiLayers=[
  {number:7,name:'Application',pdu:'Data',key:'Network services for applications',address:'Application-level names and resources',examples:['HTTP / HTTPS','DNS','DHCP','SMTP'],explain:'The services that applications use to communicate over a network. A web browser requesting a page and a DNS client resolving a name are examples.',diagnose:'Website fails by name but works by IP',check:'Test DNS resolution, the requested URL, and application service availability.',color:'#866ab8'},
  {number:6,name:'Presentation',pdu:'Data',key:'How the data is represented',address:'No OSI-layer address',examples:['Encoding','Compression','Data format','Encryption representation'],explain:'Makes the data understandable to the receiving application: representation, formatting, encoding, and (in the OSI model) encryption or compression.',diagnose:'One endpoint cannot interpret received data',check:'Compare data format, character encoding, and cryptographic compatibility.',color:'#a476b7'},
@@ -1110,8 +1105,6 @@ function renderOSI(){
 }
 
 
-// Keyboard-first navigation for device cards, checklist categories and OSI layers.
-// Native Tab, Shift+Tab and Space behavior remains intact.
 document.addEventListener('keydown',event=>{
  const target=event.target;
  if(!(target instanceof HTMLElement)||!content.contains(target))return;
@@ -1139,13 +1132,11 @@ document.addEventListener('keydown',event=>{
  const next=nodes[Math.max(0,Math.min(nodes.length-1,index+delta))];
  if(next!==target){
   next.click();
-  // OSI recreates its layer buttons when selected, so focus the replacement.
   const refreshed=[...container.querySelectorAll(selector)];
   (refreshed[nodes.indexOf(next)]||next).focus();
  }
 });
 
-// DevDen Topology Planner — offline, shared network model, separate view layouts.
 const TOPO_KEY='devden-topology-v1';
 const TOPO_TYPES=['Router','Switch','ISP','Server','PC','Laptop'];
 const TOPO_PALETTE=['#62bda8','#dfae68','#b799dc','#d7889d','#8ca6de','#c3bd70','#68a9e5'];
@@ -1201,7 +1192,6 @@ for(const d of topo.devices){c.fillStyle='#25384b';c.strokeStyle='#8595a5';c.lin
 
 navigate('ipv4');
 
-// v8 workspace controls, shared geometry and clipboard.
 let topoClipboard=null,topoPasteCount=0;
 function topoBounds(){let left=0,top=0,right=1400,bottom=850;for(const kind of ['device','zone','note'])for(const x of topoList(kind)){left=Math.min(left,x.x-160);top=Math.min(top,x.y-100);right=Math.max(right,x.x+(x.w||270)+100);bottom=Math.max(bottom,x.y+(x.h||120)+100)}return{left,top,right,bottom}}
 function topoExpandBoard(){const b=$('topo-board');if(!b)return;const r=topoBounds();const previousX=parseFloat(b.style.marginLeft)||0,previousY=parseFloat(b.style.marginTop)||0;const mx=-r.left,my=-r.top;b.style.marginLeft=mx+'px';b.style.marginTop=my+'px';const viewport=$('topo-viewport');viewport.scrollLeft+=(mx-previousX)*topoZoom;viewport.scrollTop+=(my-previousY)*topoZoom;const w=Math.max(4000,r.right),h=Math.max(2600,r.bottom);b.style.width=w+'px';b.style.height=h+'px';const svg=$('topo-links');svg.setAttribute('width',w);svg.setAttribute('height',h);svg.setAttribute('viewBox',`0 0 ${w} ${h}`);topoGrid()}
@@ -1235,7 +1225,6 @@ function topoCopy(){const refs=topoSelection.filter(s=>s.kind!=='link');const id
 function topoPaste(){if(!topoClipboard?.items.length)return;topoCheckpoint();const offset=30*++topoPasteCount,map=new Map();topoSelection=[];for(const entry of topoClipboard.items){const item=structuredClone(entry.item),kind=entry.kind;const id=kind==='device'?'d'+(++topo.counter):kind==='zone'?'z'+(++topo.zoneCounter):'n'+(++topo.noteCounter);map.set(item.id,id);item.id=id;item.x+=offset;item.y+=offset;item.locked=false;topoList(kind).push(item);topoSelection.push({kind,id})}for(const link of topoClipboard.links){const item=structuredClone(link);item.id='l'+Date.now()+'_'+topo.links.length;item.a=map.get(link.a);item.b=map.get(link.b);item.locked=false;topo.links.push(item)}topoSelected=topoSelection.at(-1);topoSave();topoRefresh();$('topo-board').focus()}
 document.addEventListener('keydown',e=>{if(active!=='topology'||e.target.closest('input:not([readonly]),textarea:not([readonly]),select'))return;if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='c'){e.preventDefault();topoCopy()}if(k==='v'){e.preventDefault();topoPaste()}if(k==='d'){e.preventDefault();topoCopy();topoPaste()}}});
 
-// Unified calculator and planning workspace.
 function plannerColors(i){return TOPO_PALETTE[i%TOPO_PALETTE.length]}
 function polishWorkspace(){
  const planning=['flsm','vlsm','v6flsm'].includes(active),subnet=['ipv4','ipv6'].includes(active);
@@ -1267,7 +1256,6 @@ function updateAllocation(){const overview=$('allocation-overview');if(!overview
  }catch{overview.innerHTML=''}
 }
 
-// Network Chart: independent local data, ordered subnet columns, explicit interface references.
 function chartData(){if(!state.networkChart||!Array.isArray(state.networkChart.subnets)||!Array.isArray(state.networkChart.devices)||!Array.isArray(state.networkChart.entries))state.networkChart={subnets:[],devices:[],entries:[],counter:0};return state.networkChart}
 function chartId(){const data=chartData();data.counter=(Number(data.counter)||0)+1;return 'nc'+data.counter}
 function chartSubnetInfo(cidr){if(cidr.includes(':')){const c=cidr6(cidr),net=(c.ip>>BigInt(128-c.p))<<BigInt(128-c.p);return{prefix:c.p,cidr:format6(net)+'/'+c.p,small:c.p>=126,ipv6:true,net,size:1n<<BigInt(128-c.p)}}const c=ipv4cidr(cidr);return{...c,prefix:c.p,cidr:ip4(c.net)+'/'+c.p,small:c.p>=30,ipv6:false}}
@@ -1302,7 +1290,6 @@ function chartBindEye(button,input){const mask=()=>{input.type='password';button
 function chartRenderSSH(column,subnet){if(!Array.isArray(subnet.sshEntries)){subnet.sshEntries=[];if(subnet.ssh&&(subnet.ssh.username||subnet.ssh.password))subnet.sshEntries.push({id:chartId(),...subnet.ssh});delete subnet.ssh}const list=column.querySelector('.chart-ssh-entries');const draw=()=>{list.innerHTML='';for(const login of subnet.sshEntries){const details=document.createElement('details');details.className='chart-ssh-login';details.dataset.sshId=login.id;details.innerHTML=`<summary><span>SSH</span><strong>${esc(login.name||login.host||'Login')}</strong></summary><div class="chart-ssh-panel"><label>IP<input data-ssh="ip" readonly value="${esc(login.ip||login.host||'')}" autocomplete="off" spellcheck="false"></label><label>Username<input data-ssh="username" readonly value="${esc(login.username||'')}" autocomplete="off"></label><label>Password<div class="chart-password-wrap"><input data-ssh="password" type="password" readonly value="${esc(login.password||'')}" autocomplete="off" aria-label="SSH password"><button type="button" class="chart-show-password"></button></div></label><div class="chart-ssh-actions"><button type="button" class="chart-edit-ssh">Edit</button><button type="button" class="chart-remove-ssh">Remove</button></div></div>`;const mask=chartBindEye(details.querySelector('.chart-show-password'),details.querySelector('[data-ssh="password"]'));details.querySelector('summary').onclick=()=>{if(details.open)mask()};details.addEventListener('toggle',()=>{if(!details.open)mask()});details.querySelector('.chart-edit-ssh').onclick=()=>form(login,details);details.querySelector('.chart-remove-ssh').onclick=()=>{if(!confirm('Remove this SSH login?'))return;subnet.sshEntries=subnet.sshEntries.filter(x=>x.id!==login.id);chartSave();draw()};list.append(details)}};
  const form=(login=null,details=null)=>{list.querySelector('.chart-ssh-draft')?.remove();list.querySelectorAll('.chart-ssh-login').forEach(d=>d.hidden=false);if(details)details.hidden=true;const draft=document.createElement('form');draft.className='chart-ssh-draft chart-ssh-panel';draft.innerHTML=`<label>Device name<input data-ssh="name" placeholder="Device name" value="${esc(login?.name||login?.host||'')}" required autocomplete="off"></label><label>IP<input data-ssh="ip" value="${esc(login?.ip||login?.host||'')}" autocomplete="off" spellcheck="false"></label><label>Username<input data-ssh="username" value="${esc(login?.username||'')}" autocomplete="off" spellcheck="false"></label><label>Password<div class="chart-password-wrap"><input data-ssh="password" type="password" value="${esc(login?.password||'')}" autocomplete="off" aria-label="SSH password"><button type="button" class="chart-show-password"></button></div></label><div class="chart-ssh-actions"><button type="button" class="chart-cancel-ssh">Cancel</button><button type="submit" class="chart-save-ssh">${login?'Save':'Add'}</button></div>`;chartBindEye(draft.querySelector('.chart-show-password'),draft.querySelector('[data-ssh="password"]'));draft.querySelector('.chart-cancel-ssh').onclick=()=>{draft.remove();if(details)details.hidden=false};draft.onsubmit=e=>{e.preventDefault();const name=draft.querySelector('[data-ssh="name"]').value.trim();if(!name){draft.querySelector('[data-ssh="name"]').focus();return}const values={name,ip:draft.querySelector('[data-ssh="ip"]').value.trim(),username:draft.querySelector('[data-ssh="username"]').value,password:draft.querySelector('[data-ssh="password"]').value};if(login)Object.assign(login,values);else subnet.sshEntries.push({id:chartId(),...values});chartSave();draw()};list.append(draft);draft.querySelector('input').focus()};draw();column.querySelector('.chart-add-ssh').onclick=()=>form();}
 
-// Mirrors store only source IDs and topology geometry; SSH data is never projected.
 function topoMirrorColumns(mirror){const data=chartData(),ids=Array.isArray(mirror.sourceIds)?mirror.sourceIds:[];const ordered=[...data.subnets.filter(s=>ids.includes(s.id)),...ids.filter(id=>!data.subnets.some(s=>s.id===id)).map(id=>({id,name:'Source removed',cidr:'',missing:true}))];return ordered.map(subnet=>{const index=data.subnets.findIndex(s=>s.id===subnet.id),entries=data.entries.filter(e=>e.subnet===subnet.id),seen=new Set(),rows=[];const visit=(entry,depth,parentIndex=-1)=>{if(seen.has(entry.id))return;seen.add(entry.id);const device=chartDevice(entry),peer=data.entries.find(e=>e.id===entry.connectedTo);const ownIndex=rows.length;rows.push({parentIndex,name:String(device.name||''),type:TOPO_TYPES.includes(device.type)?device.type:'PC',ip:String(entry.ip||''),port:String(entry.port||''),peer:peer?String(chartDevice(peer).name)+(entry.peerPort?' · '+String(entry.peerPort):''):'',depth:Math.min(depth,3)});entries.filter(e=>e.connectedTo===entry.id).forEach(e=>visit(e,depth+1,ownIndex))};const sorted=[...entries].sort((a,b)=>{try{return parseIPv4(a.ip?.split('/')[0]||'0.0.0.0')-parseIPv4(b.ip?.split('/')[0]||'0.0.0.0')}catch{return 0}});sorted.filter(e=>!entries.some(p=>p.id===e.connectedTo)).forEach(e=>visit(e,0));sorted.forEach(e=>visit(e,0));return{name:String(subnet.name||''),cidr:String(subnet.cidr||''),gateway:String(subnet.gateway||''),color:index<0?'#87929b':TOPO_PALETTE[index%TOPO_PALETTE.length],missing:!!subnet.missing,rows}})}
 function topoMirrorLayout(mirror){const columns=topoMirrorColumns(mirror);return{columns,width:Math.max(220,columns.length*220+(columns.length-1)*10),height:Math.max(170,...columns.map(col=>111+Math.max(1,col.rows.length)*76))}}
 function topoMirrorNode(mirror){const layout=topoMirrorLayout(mirror),node=document.createElement('div');node.className='topo-note topo-chart-mirror'+(topoContains('note',mirror.id)?' selected':'')+(mirror.locked?' locked':'');node.dataset.note=mirror.id;node.tabIndex=0;node.setAttribute('aria-label','Network Chart mirror, read-only');Object.assign(node.style,{left:mirror.x+'px',top:mirror.y+'px',width:mirror.w+'px',height:mirror.h+'px'});const scale=Math.min((mirror.w-12)/layout.width,(mirror.h-12)/layout.height);node.innerHTML=`<div class="topo-mirror-content" style="width:${layout.width}px;height:${layout.height}px;transform:scale(${Math.max(.05,scale)})"><div class="topo-mirror-columns">${layout.columns.map(col=>`<section class="topo-mirror-column" style="--mirror-color:${col.color}"><header><strong>${esc(col.name)}</strong><span>${esc(col.cidr||'No source available')}</span>${col.gateway?`<small>Gateway · ${esc(col.gateway)}</small>`:''}</header><div class="topo-mirror-entries">${topoMirrorConnectorSVG(col.rows)}${col.rows.length?col.rows.map(row=>`<div class="topo-mirror-entry" style="margin-left:${row.depth*18}px"><span class="topo-mirror-icon">${topoIcon(row.type)}</span><div><strong>${esc(row.name)}</strong><span>${esc(row.ip||'—')}</span>${row.port?`<small>${esc(row.port)}</small>`:''}${row.peer?`<small>via ${esc(row.peer)}</small>`:''}</div></div>`).join(''):`<div class="topo-mirror-empty">${col.missing?'Source removed':'No devices'}</div>`}</div></section>`).join('')}</div></div><div class="topo-zone-resize topo-mirror-resize" title="Resize mirror"></div>`;return node}
@@ -1315,7 +1302,6 @@ function navIcon(key){const shapes={ipv4:'<rect x="3" y="3" width="7" height="7"
 function topoMirrorConnectors(rows){return rows.flatMap((row,index)=>row.parentIndex>=0?[{x:12+row.depth*18-10,y1:33+row.parentIndex*76,y2:22+index*76,endX:12+row.depth*18-3}]:[])}
 function topoMirrorConnectorSVG(rows){return `<svg class="topo-mirror-connectors" width="220" height="${Math.max(1,rows.length)*76+16}" aria-hidden="true">${topoMirrorConnectors(rows).map(line=>`<path d="M${line.x} ${line.y1}V${line.y2}H${line.endX}"/>`).join('')}</svg>`}
 
-// Portable offline copies and reusable, credential-free setup templates.
 function cleanToolkitState(value,includeSSH=false){const copy=structuredClone(value);if(!includeSSH&&copy.networkChart){for(const subnet of copy.networkChart.subnets||[]){delete subnet.ssh;subnet.sshEntries=[]}}return copy}
 function templateLibrary(){try{const list=JSON.parse(localStorage.getItem(toolkitStorageKey('devden-templates-v1'))||'[]');return Array.isArray(list)?list:[]}catch{return []}}
 function saveTemplateLibrary(list){localStorage.setItem(toolkitStorageKey('devden-templates-v1'),JSON.stringify(list))}
@@ -1335,7 +1321,6 @@ initPortableTools();
 
 function toolkitStorageKey(key){return key+(window.DEVDEN_STORAGE_NAMESPACE?'-'+window.DEVDEN_STORAGE_NAMESPACE:'')}
 
-// Keep browser text ranges out of controls and interactive workspaces.
 document.addEventListener('mousedown',e=>{if(e.shiftKey&&!e.target.closest('input,textarea,[contenteditable="true"]')&&e.target.closest('button,nav,summary,#topo-board,.chart-move-handle,.column-resize-grip'))e.preventDefault()});
 function renderPrefixGuide(){
  title('PREFIX GUIDE');
@@ -1349,7 +1334,6 @@ function renderPrefixGuide(){
  }
  $('guide-prefix').onchange=paint;$('guide-hide').onclick=()=>{hidden=!hidden;$('guide-hide').textContent=hidden?'Reveal answers':'Hide answers';$('guide-hide').setAttribute('aria-pressed',hidden);paint()};paint();
 }
-// A small interruption for a very serious number.
 document.addEventListener('contextmenu',e=>{if(active==='topology'&&topoTool==='wire'&&e.target.closest('#topo-board')){e.preventDefault();topoConnecting=null;topoSetTool('select')}});
 document.addEventListener('pointerdown',e=>{if(active!=='topology'||!e.target.closest('#topo-board')||e.target.closest('input:not([readonly]),textarea:not([readonly]),[contenteditable="true"]'))return;window.getSelection()?.removeAllRanges();if(e.target.matches('input[readonly],textarea[readonly]')){e.preventDefault();try{e.target.setSelectionRange(0,0)}catch{}}},true);
 document.addEventListener('keydown',e=>{if(active==='topology'&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='a'&&!e.target.closest('input:not([readonly]),textarea:not([readonly]),[contenteditable="true"]')){e.preventDefault();topoSelection=['device','zone','note'].flatMap(kind=>topoList(kind).map(item=>({kind,id:item.id})));topoSelected=topoSelection[0]||null;topoPaintSelection();topoUpdateStatus()}});
