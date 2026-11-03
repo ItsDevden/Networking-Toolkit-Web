@@ -18,7 +18,7 @@ Topology: Interactive device placement, connections, and physical/logical layout
 
 Storage: Solo configurations are saved locally in the browser, while shared group configurations are stored in Supabase PostgreSQL.
 
-Live Sync: Clients communicate with Supabase through HTTPS, polling for changes approximately every 1.8 seconds. Revision checks help detect conflicting edits.
+Near Live Sync: Clients communicate with Supabase through HTTPS, polling for changes approximately every 1.8 seconds. Revision checks help detect conflicting edits.
 
 Authentication: Group members join using generated codes. Admin access uses Supabase Authentication and backend authorization.
 
