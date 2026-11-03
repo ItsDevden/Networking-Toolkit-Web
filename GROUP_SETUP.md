@@ -10,7 +10,7 @@ The front-end Groups controls are present immediately. A shared website cannot s
 
 Codes are 12 characters, hidden until clicking the eye. Anyone with the code can access or change the group's shared configuration. The group list only shows the codes this browser has joined, and Supabase table reads are blocked unless a valid code is supplied via an RPC function.
 
-Important limitations: Synchronization uses 1.8-second polling and optimistic revision checks, not conflict-free collaborative text editing. If two people make overlapping changes, the second update is stopped and users must reconnect; no silent overwrite occurs. This is a classroom prototype and is NOT ready for smooth concurrent Notes typing or 30 actively editing users. Live session status is shown by the green dot only while communicating with the backend. Browser closing remembers membership, and reconnect is manual. Leaving forgets membership locally; remote groups are not automatically deleted. Ordinary group members do not need accounts. Admin actions require a backend-verified account.
+Important limitations: Synchronization uses 1.8-second polling and optimistic revision checks, not conflict-free collaborative text editing. If two people make overlapping changes, the second update is stopped and users must reconnect; no silent overwrite occurs. This is a classroom prototype and is NOT ready for smooth concurrent Notes typing or 30 actively editing users. Live session status is shown by the green dot only while communicating with the backend. Browser closing remembers membership, and reconnect is manual. Leaving removes a membership, and the final deliberate leave deletes the now-empty group after applying the lifecycle SQL update. Ordinary group members do not need accounts. Admin actions require a backend-verified account.
 
 Solo files remain separate through an automatic local backup when joining and restoration on disconnect. Avoid simultaneous windows in the same browser profile, and back up important local projects through Templates before experimenting.
 
@@ -43,3 +43,7 @@ The production website has no demo login. Set up your own backend-approved admin
 ### Group lifecycle update (required for this release)
 
 Run `GROUP_LIFECYCLE_UPDATE.sql` in Supabase SQL Editor after the existing two setup scripts. This adds a members roster, lets browsers clear deleted groups, and deletes a group when its last member leaves. Group members are checked when the Groups menu opens and on page return.
+
+### Members list troubleshooting
+
+If live project changes synchronize but Members shows unavailable, run `GROUP_LIFECYCLE_UPDATE.sql` in the Supabase SQL Editor. This installs the `devden_member_roster` RPC. The front end now retains the last successfully loaded roster during temporary errors and refreshes it less often than project synchronization.

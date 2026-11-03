@@ -439,3 +439,40 @@ body .inventory-scroll{scrollbar-width:thin}
 .template-group-chooser{display:flex;align-items:end;gap:8px;width:100%;flex-wrap:wrap}
 .template-group-chooser label{display:grid;gap:5px;flex:1;min-width:140px;font-size:12px}
 .template-group-select{max-width:100%;padding:8px;background:#29313d;color:#e8eef5;border:1px solid #687b8b;border-radius:7px}
+
+.toolkit-export-choices:has(#project-import){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.toolkit-export-choices:has(#project-import) button{width:100%;min-width:0;white-space:normal;text-align:center}
+.template-group-transfer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 14px;min-width:0}
+.template-group-transfer button{min-width:0;white-space:normal}
+.template-group-chooser{grid-column:1/-1}
+@media(max-width:440px){.toolkit-export-choices:has(#project-import),.template-group-transfer{grid-template-columns:1fr 1fr}}
+/* Live collaboration states */
+#group-toggle.group-error-state{border-color:#d46b72;background:#4b303a}
+#group-toggle.group-error-state .group-status-dot{background:#fa7479}
+#group-toggle.group-reconnecting-state{border-color:#b68c4c}
+#group-toggle.group-reconnecting-state .group-status-dot{background:#e1b458}
+#sidebar .group-choice.selected .group-choice-arrow{transform:rotate(90deg)}
+.group-person .group-kick{margin-left:auto;padding:3px 7px;border:1px solid #a8656b;background:#55363e;color:#ffd5d5;border-radius:5px;font-size:11px;cursor:pointer}
+.topo-duplicate-dialog{border:1px solid #60788b;border-radius:12px;background:#202d3b;color:#e6eef5;padding:20px;min-width:min(360px,90vw)}
+.topo-duplicate-dialog::backdrop{background:#080e18aa}
+.topo-duplicate-dialog form{display:flex;flex-direction:column;gap:12px}
+.topo-duplicate-dialog h3{margin:0 0 8px}
+.topo-duplicate-dialog label{display:flex;align-items:center;gap:10px}
+.topo-duplicate-dialog footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.topo-duplicate-dialog button{background:#314b60;color:#fff;border:1px solid #648398;border-radius:7px;padding:7px 12px;cursor:pointer}
+
+/* Integrated live collaboration indicators. Palette is supplied by TOPO_PALETTE. */
+#group-toggle .group-display-stack{display:flex;flex-direction:column;flex:1;min-width:0;gap:2px}
+#group-toggle .group-subtitle{display:block;font-size:10px;font-weight:500;color:#75caa4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#group-toggle .group-subtitle[hidden]{display:none}
+#group-toggle.group-error-state .group-subtitle{color:#ff969b}
+#group-toggle.group-reconnecting-state .group-subtitle{color:#e1b458}
+#sidebar.collapsed #group-toggle .group-display-stack{display:none}
+.topo-node.devden-remote-lock,.topo-note.devden-remote-lock{border:2px solid var(--collab-color)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--collab-color) 30%,transparent)!important}
+.topo-zone.devden-remote-lock{outline:2px solid var(--collab-color);outline-offset:2px}
+.topo-link-wrap.devden-remote-lock{outline:2px solid var(--collab-color);border-radius:4px}
+.topo-node.devden-own-lock,.topo-note.devden-own-lock{border-color:var(--collab-color)!important}
+.devden-collab-tag{position:absolute;left:-2px;top:-22px;z-index:30;background:var(--collab-color);color:#182130;font:bold 11px/20px system-ui,sans-serif;min-width:30px;padding:0 8px;text-align:center;border-radius:8px 8px 0 0;pointer-events:none;box-sizing:border-box}
+.notes-paper-wrap{position:relative}
+.devden-note-caret{position:absolute;z-index:40;border-left:2px solid var(--collab-color);height:21px;background:transparent;color:var(--collab-color);padding:0 1px;font:bold 10px/11px system-ui,sans-serif;pointer-events:none;min-width:8px}
+.group-draft-button{width:100%;margin:8px 0;border:1px solid #bd9868;background:#3a3335;color:#f4dcb7;border-radius:6px;padding:7px;cursor:pointer}
