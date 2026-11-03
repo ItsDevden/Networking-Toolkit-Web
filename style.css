@@ -403,3 +403,12 @@ body .inventory-scroll{scrollbar-width:thin}
 .admin-pagination{display:flex;align-items:center;justify-content:center;gap:15px;font-size:11px;color:#b9c9d6}
 .admin-pagination button{padding:7px 12px}
 @media(max-width:540px){.admin-modal:has(.admin-dashboard) .admin-body{padding:12px}.admin-row-online{display:none}.admin-row-count{width:68px}.admin-controls{align-items:stretch}.admin-filters{width:100%}.admin-filters button{flex:1}.admin-group-list{max-height:46vh}}
+#sidebar .group-overlay{box-sizing:border-box;overflow-x:hidden}
+#sidebar .group-memberships{min-width:0;overflow-x:hidden;overflow-y:auto}
+#sidebar .group-member-row{min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}
+#sidebar .group-code-line{min-width:0;max-width:100%;align-items:stretch}
+#sidebar .group-code-line input{min-width:0;width:0;flex:1 1 0}
+#sidebar .group-code-line button{flex:0 0 auto;padding:6px;white-space:nowrap}
+#sidebar .group-row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-width:0}
+#sidebar .group-row-actions button{box-sizing:border-box;min-width:0;width:100%;min-height:35px;padding:7px 4px;line-height:1.2;white-space:normal;overflow-wrap:break-word;text-align:center;display:flex;align-items:center;justify-content:center}
+#sidebar .group-row-actions button:first-child{flex:initial}
