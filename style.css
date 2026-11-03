@@ -412,3 +412,30 @@ body .inventory-scroll{scrollbar-width:thin}
 #sidebar .group-row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-width:0}
 #sidebar .group-row-actions button{box-sizing:border-box;min-width:0;width:100%;min-height:35px;padding:7px 4px;line-height:1.2;white-space:normal;overflow-wrap:break-word;text-align:center;display:flex;align-items:center;justify-content:center}
 #sidebar .group-row-actions button:first-child{flex:initial}
+
+#sidebar .group-memberships{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto}
+#sidebar .group-choices{display:flex;flex-direction:column;gap:5px;flex:none}
+#sidebar .group-choice{width:100%;min-width:0;display:flex;align-items:center;gap:7px;background:#293846;color:#e4eaf0;border:1px solid #435d71;border-radius:7px;padding:9px 10px;text-align:left;cursor:pointer;font-size:12px}
+#sidebar .group-choice.selected,#sidebar .group-choice:hover{background:#374d60;border-color:#7896aa}
+#sidebar .group-choice-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+#sidebar .group-active-dot,.group-person-dot{width:8px;height:8px;border-radius:50%;background:#6b7986;flex:none}
+#sidebar .group-active-dot,.group-person-dot.online{background:#70bf95}
+#sidebar .group-choice-arrow{opacity:.7;font-size:18px}
+#sidebar .group-detail{display:flex;flex-direction:column;gap:9px;border:1px solid #4b657a;border-radius:9px;padding:10px;background:#2c3b4a;min-width:0}
+#sidebar .group-detail-top{display:flex;justify-content:space-between;align-items:center;gap:7px;font-size:12px}
+#sidebar .group-detail-top span{font-size:10px;color:#a4bdcf}
+#sidebar .group-detail-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#sidebar .group-detail-actions button{width:100%;min-width:0;border:1px solid #5b7185;background:#3a4a59;color:#e7edf3;border-radius:7px;padding:8px 5px;font-size:11px;cursor:pointer}
+#sidebar .group-detail-actions button:last-child:nth-child(odd){grid-column:1/-1}
+#sidebar .group-member-heading{display:flex;justify-content:space-between;gap:6px;border-top:1px solid #4a6174;padding-top:10px;color:#d4e3ee;font-size:11px;font-weight:600}
+#sidebar .group-member-heading span{font-weight:400;color:#9eb6ca}
+#sidebar .group-people{display:grid;gap:8px;max-height:180px;overflow-y:auto}
+#sidebar .group-person{display:flex;align-items:center;gap:8px;font-size:11px;min-width:0}
+#sidebar .group-person-name{overflow-wrap:anywhere;min-width:0}
+#sidebar .group-person-name small{color:#9bb2c3}
+#sidebar .group-member-empty{font-size:11px;color:#a3b6c5;margin:0}
+.template-group-transfer{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.template-group-transfer button,.template-group-chooser button{border:1px solid #627a8a;background:#364b5a;color:#e9eff5;border-radius:7px;padding:8px 12px;cursor:pointer}
+.template-group-chooser{display:flex;align-items:end;gap:8px;width:100%;flex-wrap:wrap}
+.template-group-chooser label{display:grid;gap:5px;flex:1;min-width:140px;font-size:12px}
+.template-group-select{max-width:100%;padding:8px;background:#29313d;color:#e8eef5;border:1px solid #687b8b;border-radius:7px}

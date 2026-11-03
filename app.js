@@ -1352,6 +1352,27 @@ function restoreProject(item){
  topoSave();
 }
 function showTemplates(){const dialog=toolkitDialog('Saved projects & templates',`<p class="toolkit-description">Save the complete current workspace including Notes, charts, checklists and both topology views. Old reusable templates are supported.</p><label class="toolkit-field">Project name<input id="template-name" placeholder="e.g. Two-router lab" maxlength="80"></label><div class="toolkit-export-choices"><button type="button" id="project-import">Import project backup</button><button type="button" id="project-export">Export current backup</button><input id="project-import-file" type="file" accept="application/json,.json" hidden></div><div id="template-list"></div>`,d=>{const name=d.querySelector('#template-name').value.trim();if(!name)throw Error('Enter a project name');const list=templateLibrary();list.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),name,...projectSnapshot()});saveTemplateLibrary(list)});
+ const transfer=window.DevDenGroupTransfers;
+ if(transfer?.connected()){
+  const options=dialog.querySelector('.toolkit-export-choices');
+  options.querySelector('#project-import').hidden=true;
+  options.querySelector('#project-export').hidden=true;
+  const tools=document.createElement('div');tools.className='template-group-transfer';
+  tools.innerHTML='<button type="button" id="template-upload-group">Upload to group</button><button type="button" id="template-download-group">Save from group</button>';
+  options.after(tools);
+  tools.querySelector('#template-download-group').onclick=()=>{try{transfer.saveFromGroup();redraw()}catch(e){alert(e.message)}};
+  tools.querySelector('#template-upload-group').onclick=async()=>{
+   const projects=templateLibrary().filter(t=>t.version===2&&t.state&&t.topology);
+   if(!projects.length){alert('Save a Solo project in Templates first.');return}
+   const chooser=document.createElement('select');chooser.className='template-group-select';
+   projects.forEach(t=>{const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;chooser.append(opt)});
+   const wrap=document.createElement('div');wrap.className='template-group-chooser';
+   const label=document.createElement('label');label.textContent='Solo project';label.append(chooser);wrap.append(label);
+   const send=document.createElement('button');send.type='button';send.textContent='Upload selected';wrap.append(send);
+   tools.querySelector('.template-group-chooser')?.remove();tools.append(wrap);
+   send.onclick=async()=>{if(!confirm('Replace the current Group configuration with this Solo project?'))return;send.disabled=true;try{await transfer.uploadToGroup(chooser.value);wrap.remove();dialog.close()}catch(e){alert(e.message);send.disabled=false}};
+  };
+ }
  const redraw=()=>{const list=templateLibrary(),target=dialog.querySelector('#template-list');target.innerHTML=list.length?list.map(t=>`<div class="template-item"><span>${esc(t.name)}${t.version===2?' · Project':' · Legacy template'}</span><button type="button" data-load-template="${esc(t.id)}">Open</button><button type="button" data-copy-template="${esc(t.id)}">Duplicate</button><button type="button" data-export-template="${esc(t.id)}">Backup</button><button type="button" data-delete-template="${esc(t.id)}" aria-label="Delete ${esc(t.name)}">×</button></div>`).join(''):'<p class="toolkit-empty">No saved projects yet.</p>';
   target.querySelectorAll('[data-load-template]').forEach(button=>button.onclick=()=>{const item=list.find(t=>t.id===button.dataset.loadTemplate);if(!item||!confirm('Open '+item.name+'? This will replace your current workspace. Save it first if you want to keep it.'))return;const target=active;restoreProject(item);dialog.close();if(target==='notes')active='ipv4';navigate(target)});
   target.querySelectorAll('[data-copy-template]').forEach(button=>button.onclick=()=>{const item=list.find(t=>t.id===button.dataset.copyTemplate);if(!item)return;const clone=structuredClone(item);clone.id=Date.now().toString(36)+Math.random().toString(36).slice(2,5);clone.name=(clone.name+' (copy)').slice(0,80);try{saveTemplateLibrary([...list,clone]);redraw()}catch(e){alert('Could not duplicate project: '+e.message)}});

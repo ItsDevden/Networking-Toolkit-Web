@@ -39,3 +39,7 @@ The production website has no demo login. Set up your own backend-approved admin
 - **Save to Solo** copies the current Group project into Templates. **Share Solo** imports a previously saved full Solo project into the Group after confirmation. Both keep independent copies.
 - Group editing is revision-based polling, not a CRDT. Simultaneous writes to the same group can conflict. On conflict, this build saves an **Unsynced conflict copy** in Templates before asking you to reconnect. It does not intelligently merge overlapping edits.
 - This is a lightweight classroom tool, not high-security identity management. Membership IDs are browser-held and join codes act as access credentials.
+
+### Group lifecycle update (required for this release)
+
+Run `GROUP_LIFECYCLE_UPDATE.sql` in Supabase SQL Editor after the existing two setup scripts. This adds a members roster, lets browsers clear deleted groups, and deletes a group when its last member leaves. Group members are checked when the Groups menu opens and on page return.
