@@ -35,6 +35,7 @@
    }
    return result;
   }
+  if(path.startsWith('/state/sketches/')&&base===undefined&&Array.isArray(ours)&&Array.isArray(theirs))base=[];
   const indexed=a=>Array.isArray(a)&&a.every(x=>plain(x)&&typeof x.id==='string');
   if(indexed(base)&&indexed(ours)&&indexed(theirs)){
    const b=new Map(base.map(x=>[x.id,x])),o=new Map(ours.map(x=>[x.id,x])),t=new Map(theirs.map(x=>[x.id,x]));

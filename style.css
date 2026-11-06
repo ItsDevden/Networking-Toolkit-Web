@@ -476,3 +476,85 @@ body .inventory-scroll{scrollbar-width:thin}
 .notes-paper-wrap{position:relative}
 .devden-note-caret{position:absolute;z-index:40;border-left:2px solid var(--collab-color);height:21px;background:transparent;color:var(--collab-color);padding:0 1px;font:bold 10px/11px system-ui,sans-serif;pointer-events:none;min-width:8px}
 .group-draft-button{width:100%;margin:8px 0;border:1px solid #bd9868;background:#3a3335;color:#f4dcb7;border-radius:6px;padding:7px;cursor:pointer}
+
+#topo-board .topo-node,#topo-board .topo-note,#topo-board .topo-zone-handle,#topo-board .topo-zone-resize{touch-action:none}
+#topo-delete{border-color:#a96a78!important;min-height:36px;touch-action:manipulation}
+.topo-toolbar button,.topo-toolbar summary{touch-action:manipulation;min-height:36px}
+.devden-remote-lock{outline:3px solid var(--collab-color,#ba7bdc)!important;outline-offset:3px}
+.devden-own-lock{outline:2px dashed var(--collab-color,#72bfa8)!important;outline-offset:2px}
+.devden-collab-tag{position:absolute;right:-9px;top:-10px;z-index:20;background:var(--collab-color,#a78bfa);border-radius:50%;height:21px;min-width:21px;display:grid;place-items:center;color:#12121a;font-weight:800;font-size:11px;pointer-events:none}
+
+@media (pointer:coarse){
+#topo-board .topo-node,#topo-board .topo-note{position:absolute;isolation:isolate;touch-action:none}
+#topo-board .topo-node::before,#topo-board .topo-note::before{content:"";position:absolute;inset:-12px;z-index:-1;pointer-events:auto}
+#topo-board .topo-zone-handle{min-height:26px;touch-action:none}
+#topo-board .topo-zone-resize{min-width:30px;min-height:30px;touch-action:none}
+body:has(#topo-board) .topo-toolbar button,body:has(#topo-board) .topo-menu summary{min-height:42px}
+}
+
+body:has(#topo-board) .topo-toolbar{width:100%;min-width:0;max-width:100%;overflow:visible;align-content:flex-start}
+body:has(#topo-board) .topo-device-tools,body:has(#topo-board) .topo-tool-row{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;max-width:100%}
+body:has(#topo-board) .topo-tool-row{flex:1 1 100%}
+body:has(#topo-board) .topo-viewport{overflow:scroll;overscroll-behavior:contain;scrollbar-width:auto;touch-action:pan-x pan-y}
+body:has(#topo-board) .topo-viewport::-webkit-scrollbar{width:14px;height:14px}
+body:has(#topo-board) .topo-viewport::-webkit-scrollbar-thumb{background:#6c7583;border:3px solid #1b2530;border-radius:12px}
+body:has(#topo-board) .topo-viewport::-webkit-scrollbar-track{background:#1b2530}
+body:has(#topo-board) #topo-board{touch-action:pan-x pan-y}
+#topo-board .topo-node,#topo-board .topo-note{touch-action:none;cursor:grab}
+#topo-board .topo-node:active,#topo-board .topo-note:active{cursor:grabbing}
+.template-library-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:15px 0 8px}
+.template-library-actions{display:flex;gap:8px;flex-wrap:wrap}
+.template-library-actions button{min-height:36px}
+@media(max-width:950px){body:has(#topo-board) .topo-toolbar{max-height:43vh;overflow-y:auto;scrollbar-width:thin}body:has(#topo-board) .topo-toolbar button{min-height:38px}}
+
+#topo-board,#topo-board *{touch-action:none!important}
+#topo-board .topo-node,#topo-board .topo-note{min-width:110px;min-height:90px;cursor:grab;z-index:15}
+#topo-board .topo-node input[readonly],#topo-board .topo-note textarea[readonly]{touch-action:none!important;cursor:grab}
+#topo-board .topo-node.selected{outline:3px solid #e1afe2;outline-offset:5px}
+#topo-board .topo-zone{z-index:1}
+#topo-board .topo-zone-handle{min-height:38px;min-width:38px}
+#devden-pencil{position:absolute;right:8px;top:8px;z-index:30;width:38px;height:38px;border:1px solid #796988;border-radius:8px;background:#382d42;color:#f3d2ee;font-size:25px;cursor:pointer;touch-action:manipulation}
+#sidebar header{position:relative}
+#devden-pencil.selected{background:#865c92;color:#fff}
+#devden-sketch-layer{position:absolute;inset:0;width:100%;height:100%;z-index:100;pointer-events:none;touch-action:none}
+#devden-sketch-layer.enabled{pointer-events:auto;cursor:crosshair}
+#main{position:relative}
+#devden-sketch-tools[hidden]{display:none}
+#devden-sketch-tools{position:fixed;top:72px;right:22px;z-index:101;background:#302a3b;border:1px solid #856b94;border-radius:8px;display:flex;gap:10px;align-items:center;padding:9px 12px;color:#f7e5ff;box-shadow:0 8px 20px #0006}
+#devden-sketch-tools button{padding:9px 12px;border-radius:6px;background:#594667;border:1px solid #937da0;color:white;touch-action:manipulation}
+#template-list-import,#template-list-export{background:#554766!important;border:1px solid #9d83ad!important;color:white!important;font-weight:600}
+
+/* Topology interaction: empty canvas never pans; navigation stays on scrollbars. */
+body:has(#topo-board) .topo-viewport{touch-action:none!important;overscroll-behavior:contain}
+#topo-board{touch-action:none!important}
+#topo-board .topo-zone{pointer-events:none}
+#topo-board .topo-zone-handle,#topo-board .topo-zone-name,#topo-board .topo-zone-network,#topo-board .topo-zone-resize{pointer-events:auto}
+#topo-board .topo-node{z-index:18;touch-action:none!important}
+#devden-pencil{left:10px;right:auto;top:10px;width:26px;height:26px;padding:0;border-radius:6px;font-size:17px;line-height:24px;box-shadow:0 2px 6px #0006}
+#devden-sketch-tools{right:auto;top:auto;gap:5px;padding:5px 7px;font-size:11px;white-space:nowrap;border-radius:7px}
+#devden-sketch-tools button{padding:5px 8px;font-size:11px}
+
+body:has(#topo-board) .topo-viewport{touch-action:none!important;overscroll-behavior:contain!important;overflow:scroll!important}
+body:has(#topo-board) #topo-board,body:has(#topo-board) #topo-board *{touch-action:none!important}
+body:has(#topo-board) #topo-board .topo-zone{pointer-events:none!important}
+body:has(#topo-board) #topo-board .topo-zone-handle,body:has(#topo-board) #topo-board .topo-zone-resize,body:has(#topo-board) #topo-board .topo-zone-name,body:has(#topo-board) #topo-board .topo-zone-network{pointer-events:auto!important}
+body:has(#topo-board) #topo-board .topo-node,body:has(#topo-board) #topo-board .topo-note{z-index:24;cursor:grab}
+body:has(#topo-board) #topo-board .topo-node:active,body:has(#topo-board) #topo-board .topo-note:active{cursor:grabbing}
+#devden-pencil{width:25px!important;height:25px!important;min-width:25px!important;min-height:25px!important;line-height:23px!important;font-size:15px!important;top:5px!important;left:5px!important;border-radius:5px!important;z-index:35!important}
+#devden-sketch-tools{position:fixed!important;right:auto!important;bottom:auto!important;flex-direction:row!important;gap:4px!important;padding:4px!important;border-radius:6px!important;align-items:center!important}
+#devden-sketch-tools button{padding:4px 7px!important;min-height:24px!important;font-size:11px!important}
+@media(max-width:950px){body:has(#topo-board) .topo-toolbar{max-height:none!important;overflow:visible!important}body:has(#topo-board) .topo-toolbar>button{min-width:fit-content}}
+
+/* Device drag must win over browser gestures and overlapping LAN/cable layers. */
+#topo-board .topo-node, #topo-board .topo-note{touch-action:none!important;pointer-events:auto!important;cursor:grab!important}
+#topo-board .topo-node input[readonly],#topo-board .topo-note textarea[readonly]{pointer-events:none!important}
+#topo-board .topo-node:active,#topo-board .topo-note:active{cursor:grabbing!important}
+
+/* Direct selection movement: browser must never scroll/pan or drag a native control while touching topology. */
+body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo-board .topo-node *, #topo-board .topo-note, #topo-board .topo-note *{touch-action:none!important;-webkit-user-select:none;user-select:none;-webkit-user-drag:none;}
+#topo-board .topo-node, #topo-board .topo-note{pointer-events:auto!important;cursor:grab!important;}
+#topo-board .topo-node input[readonly], #topo-board .topo-note textarea[readonly]{pointer-events:none!important;}
+#topo-board .topo-node.selected{outline:3px solid #e1afe2!important;outline-offset:4px;}
+
+/* Desktop-style selection rectangle, positioned in board coordinates. */
+#topo-board .topo-marquee{position:absolute;z-index:100;pointer-events:none;border:1px solid #c9a2e4;background:rgba(179,124,223,.18);box-shadow:0 0 0 1px rgba(201,162,228,.25) inset;}
