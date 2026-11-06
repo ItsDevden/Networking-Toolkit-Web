@@ -1477,6 +1477,28 @@ function offlineHTML(includeSSH=false){const source=window.DEVDEN_OFFLINE_SOURCE
 function toolkitShell(logo='logo.png'){return `<div class="shell"><aside id="sidebar"><header><button id="devden-pencil" type="button" title="Draw on page" aria-label="Draw on page">✎</button><b class="brand-name">DevDen<small>NETWORKING TOOLKIT</small></b><img src="${logo}" alt="DevDen logo" id="logo" title="Collapse sidebar"></header><nav id="navigation"></nav><footer class="app-footer"><div class="footer-tools"><button id="toolkit-offline" title="Download offline copy with current setup" aria-label="Download offline copy">↓ <span>Offline copy</span></button><button id="toolkit-pdf" title="Export PDF" aria-label="Export PDF">▤ <span>PDF</span></button></div><button id="toolkit-templates" title="Saved projects and templates" aria-label="Templates">▧ <span>Templates</span></button></footer></aside><main id="main"><div id="content"></div></main></div>`}
 function showOfflineDownload(){toolkitDialog('Download offline copy',`<p class="toolkit-description">The app and your current setup in one HTML file.</p><label class="toolkit-check"><input id="offline-include-ssh" type="checkbox">Include saved SSH logins</label>`,dialog=>{download('DevDen-Toolkit-offline-'+new Date().toISOString().slice(0,10)+'.html',offlineHTML(dialog.querySelector('#offline-include-ssh').checked),'text/html;charset=utf-8')})}
 function projectSnapshot(){if(active==='notes')notesCommit();return {version:2,state:cleanToolkitState(state,false),topology:structuredClone(topo)}}
+// Apply group changes without destroying the current topology viewport, menus,
+// tool mode, selection, keyboard focus or scroll position. These are local UI state.
+function applyGroupRemoteProject(item, previous){
+ if(!item||item.version!==2||!item.state||!item.topology)return;
+ const topologyChanged=JSON.stringify(previous?.topology)!==JSON.stringify(item.topology);
+ const chartChanged=JSON.stringify(previous?.state?.networkChart)!==JSON.stringify(item.state.networkChart);
+ state={...structuredClone(defaults),...structuredClone(item.state)};
+ topo={...topoDefault(),...structuredClone(item.topology)};
+ topo.notes ||= [];
+ // Never reset topology undo history or selection just because a peer saved.
+ topoSelection=topoSelection.filter(ref=>Boolean(topoItem(ref)));
+ if(topoSelected&&!topoItem(topoSelected))topoSelected=null;
+ try{localStorage.setItem(toolkitStorageKey('devden-toolkit-v2'),JSON.stringify(state))}catch(e){console.warn('Group state persistence',e)}
+ topoSave();
+ if(active==='topology'){
+  // topoRefresh updates existing board DOM and leaves toolbar and viewport intact.
+  if(topologyChanged||chartChanged)topoRefresh();
+  window.DevDenSketch?.render?.();
+ }else{
+  navigate(active);
+ }
+}
 function restoreProject(item){
  if(item.version===2&&item.state&&item.topology){
   state={...structuredClone(defaults),...structuredClone(item.state)};

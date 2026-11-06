@@ -189,6 +189,8 @@ if(!activeGroup||busy)return;busy=true;const group=activeGroup;const previousSta
    conflictDraft=structuredClone(local);notice='An overlapping edit was not applied · review in Groups';
   }
   if(active==='topology'&&Date.now()-lastLocalActivity<650)return;
+  // Remote updates must not interrupt text editing inside a topology object.
+  if(active==='topology'&&document.activeElement?.matches('#topo-board input:focus,#topo-board textarea:focus'))return;
   group.revision=remote.revision;baseDocument=structuredClone(remote.document);
   if(!DevDenMerge.same(merged,local)){
    // Keep keyboard focus while someone is editing rich text. Try again next poll.
@@ -214,11 +216,8 @@ if(!activeGroup||busy)return;busy=true;const group=activeGroup;const previousSta
    }else{
     applyingRemote=true;
     try{
-     if(active==='topology'&&DevDenMerge.same(merged.topology,local.topology)){
-      state={...structuredClone(defaults),...structuredClone(merged.state)};
-      localStorage.setItem(toolkitStorageKey('devden-toolkit-v2'),JSON.stringify(state));
-      window.DevDenSketch?.render?.();
-     }else{restoreProject(merged);navigate(active)}
+     if(active==='topology')applyGroupRemoteProject(merged,local);
+     else{restoreProject(merged);navigate(active)}
     }finally{applyingRemote=false}
     local=current();serialized=JSON.stringify(local)
    }
