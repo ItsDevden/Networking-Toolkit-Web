@@ -19,6 +19,9 @@ const lockKey=(kind,id)=>kind+':'+id;
 const lockOwner=key=>remoteLocks.find(l=>l.key===key&&l.member!==memberId)?.member;
 const ownLock=key=>heldLocks.has(key);
 const online=()=>Boolean(activeGroup&&!failures&&!remoteConflict);
+const groupStatus=()=>!activeGroup?'Saved locally':failures?'Offline · unsynced':remoteConflict?'Conflict · unsynced':dirty?'Saving to group…':'Saved in group';
+const emitGroupStatus=()=>window.dispatchEvent(new Event('devden-group-status'));
+window.DevDenGroupStatus={current:groupStatus};
 async function lease(key,release=false,cursor=-1,force=false){if(!activeGroup)return true;const group=activeGroup;try{
  const response=await rpc('devden_lock_object',{p_code:group.code,p_member_id:memberId,p_object:key,p_release:release,p_cursor:cursor,p_force:force});
  if(response?.removed){removed(group);return false}
@@ -162,11 +165,11 @@ async function shareSoloProject(templateId){
 window.DevDenGroupTransfers={connected:()=>Boolean(activeGroup&&!failures&&!remoteConflict),name:()=>activeGroup?.name||'',saveFromGroup:saveGroupToSolo,uploadToGroup:shareSoloProject};
 function backupSolo(){if(localStorage.getItem(soloKey))return;localStorage.setItem(soloKey,JSON.stringify(current()))}
 function restoreSolo(){const raw=localStorage.getItem(soloKey);if(!raw)return;try{restoreProject(JSON.parse(raw));localStorage.removeItem(soloKey);navigate(active)}catch(e){alert('Could not restore Solo workspace: '+e.message)}}
-function disconnect(){releaseLocks();remoteLocks=[];baseDocument=null;conflictDraft=null;if(poll)clearInterval(poll);poll=null;activeGroup=null;dirty=false;connecting=false;failures=0;remoteConflict=false;localStorage.removeItem(activeKey);restoreSolo();render()}
+function disconnect(){releaseLocks();remoteLocks=[];baseDocument=null;conflictDraft=null;if(poll)clearInterval(poll);poll=null;activeGroup=null;dirty=false;connecting=false;failures=0;remoteConflict=false;localStorage.removeItem(activeKey);restoreSolo();render();emitGroupStatus()}
 async function connect(group,existing){if(connecting)return;if(activeGroup?.code===group.code&&!failures&&!remoteConflict){open(false);return}if(activeGroup?.code===group.code){if(remoteConflict&&!confirm('Your latest group edits have not synced. Discard those local changes and reload the shared project?'))return;disconnect()}connecting=true;try{
- if(activeGroup)disconnect();const remote=existing||await rpc('devden_register_member',{p_code:group.code,p_member_id:memberId,p_nickname:group.nickname});if(!remote||!remote.document)throw Error('Group not found.');backupSolo();activeGroup={...group,revision:remote.revision};dirty=false;failures=0;remoteConflict=false;notice=null;conflictDraft=null;baseDocument=structuredClone(remote.document);restoreProject(remote.document);navigate(active);lastSaved=JSON.stringify(current());localStorage.setItem(activeKey,group.code);selectedCode=group.code;render();open(false);poll=setInterval(sync,1800);refreshRoster(group.code)
+ if(activeGroup)disconnect();const remote=existing||await rpc('devden_register_member',{p_code:group.code,p_member_id:memberId,p_nickname:group.nickname});if(!remote||!remote.document)throw Error('Group not found.');backupSolo();activeGroup={...group,revision:remote.revision};dirty=false;failures=0;remoteConflict=false;notice=null;conflictDraft=null;baseDocument=structuredClone(remote.document);restoreProject(remote.document);navigate(active);lastSaved=JSON.stringify(current());localStorage.setItem(activeKey,group.code);selectedCode=group.code;render();open(false);poll=setInterval(sync,1800);emitGroupStatus();refreshRoster(group.code)
  }catch(e){alert('Unable to connect: '+e.message)}finally{connecting=false}}
-window.addEventListener('devden-state-updated',()=>{if(activeGroup&&!applyingRemote){dirty=true;lastLocalActivity=Date.now()}});
+window.addEventListener('devden-state-updated',()=>{if(activeGroup&&!applyingRemote){dirty=true;lastLocalActivity=Date.now();emitGroupStatus()}});
 function removed(group){const name=group.name;forgetMissing(group.code);notice='Removed from '+name;render()}
 async function sync(){
  if(active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag)return;
@@ -237,7 +240,7 @@ if(!activeGroup||busy)return;busy=true;const group=activeGroup;const previousSta
  if(!panel.hidden&&Date.now()-(lastRosterFetch[group.code]||0)>=8000)refreshRoster(group.code);
  await refreshLocks();
  for(const [key,last] of heldLocks)if(Date.now()-last>4000)await lease(key,false);
- }catch(e){failures++;console.warn('Group sync',e);render()}finally{busy=false}}
+ }catch(e){failures++;console.warn('Group sync',e);render()}finally{busy=false;emitGroupStatus()}}
 if(localStorage.getItem(activeKey)){localStorage.removeItem(activeKey);restoreSolo()}
 render();validateGroups();document.addEventListener('visibilitychange',()=>{if(!document.hidden)validateGroups()});
 })();

@@ -558,3 +558,12 @@ body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo
 
 /* Desktop-style selection rectangle, positioned in board coordinates. */
 #topo-board .topo-marquee{position:absolute;z-index:100;pointer-events:none;border:1px solid #c9a2e4;background:rgba(179,124,223,.18);box-shadow:0 0 0 1px rgba(201,162,228,.25) inset;}
+
+/* Collaborative topology QoL: the middle mouse button pans locally. */
+#topo-viewport.topo-middle-panning, #topo-viewport.topo-middle-panning * { cursor: grabbing !important; user-select: none !important; }
+.topo-search-box { display: inline-flex; gap: 5px; align-items: center; min-width: 155px; }
+.topo-search-box input { min-width: 105px; max-width: 190px; width: clamp(110px, 11vw, 180px); font: inherit; font-size: 12px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border, #3d4857); background: var(--panel, #202938); color: inherit; }
+.topo-search-box input:focus-visible { outline: 2px solid #a883b4; outline-offset: 1px; }
+.topo-save-indicator { display: inline-flex; margin-left: auto; align-items: center; opacity: .76; white-space: nowrap; font-size: 12px; }
+.topo-search-feedback { display: inline-flex; font-size: 12px; opacity: .76; margin-left: 8px; }
+@media (max-width: 720px) { .topo-search-box { min-width: unset; } .topo-search-box input { width: 110px; } }

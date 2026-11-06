@@ -1168,10 +1168,87 @@ const TOPO_ICONS={Router:'router',Switch:'switch',ISP:'cloud',Server:'server',PC
 function topoIcon(type){const inner={Router:'<rect x="3" y="8" width="26" height="14" rx="5"/><path d="M9 13h14M9 17h14M8 5l4-3m12 3-4-3"/><circle cx="9" cy="17" r="1"/>',Switch:'<rect x="2" y="8" width="28" height="16" rx="3"/><path d="M6 13h4m3 0h4m3 0h4M6 19h4m3 0h4m3 0h4"/>',ISP:'<path d="M8 24a7 7 0 0 1-1-14 10 10 0 0 1 19 2 6 6 0 0 1-2 12Z"/>',Server:'<rect x="6" y="3" width="20" height="26" rx="2"/><path d="M6 12h20M6 21h20"/><circle cx="11" cy="8" r="1"/><circle cx="11" cy="17" r="1"/><circle cx="11" cy="25" r="1"/>',PC:'<rect x="3" y="3" width="26" height="19" rx="2"/><path d="M16 22v6M9 28h14"/>',Laptop:'<rect x="5" y="3" width="22" height="20" rx="2"/><path d="M2 27h28l-3-4H5Z"/>'}[type]||'';return `<svg class="topo-hardware" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`}
 function topoDefault(){return {devices:[],links:[],zones:[],notes:[],view:'physical',cable:'normal',counter:0,zoneCounter:0,noteCounter:0,paletteVersion:2};}
 function topoLoad(){try{const s=JSON.parse(localStorage.getItem(toolkitStorageKey(TOPO_KEY)));if(!s||!Array.isArray(s.devices)||!Array.isArray(s.links)||!Array.isArray(s.zones))return topoDefault();const t={...topoDefault(),...s};t.notes=Array.isArray(t.notes)?t.notes:[];for(const d of t.devices){const old=d.positions?.physical||d.positions?.logical;d.x=Number.isFinite(d.x)?d.x:(old?.x??140);d.y=Number.isFinite(d.y)?d.y:(old?.y??140);delete d.positions;d.locked=!!d.locked;}for(const l of t.links){if(typeof l.physical==='string')l.physical={a:'',middle:l.physical,b:''};if(typeof l.logical==='string')l.logical={a:'',middle:l.logical,b:''};l.physical ||= {a:'',middle:'',b:''};l.logical ||= {a:'',middle:'',b:''};l.locked=!!l.locked;}for(const [index,z] of t.zones.entries()){z.locked=!!z.locked;if(s.paletteVersion!==2&&TOPO_PALETTE.includes(z.color)){const ordinal=Number(String(z.id).replace(/^z/,''));z.color=TOPO_PALETTE[(Number.isFinite(ordinal)&&ordinal>0?ordinal-1:index)%TOPO_PALETTE.length]}}t.paletteVersion=2;t.notes=t.notes.flatMap(note=>{if(note.type!=='chartMirror'||!Array.isArray(note.sourceIds)||note.sourceIds.length<2)return[note];const width=Math.max(172,Math.round((note.w||480)/note.sourceIds.length));return note.sourceIds.map((id,index)=>({...note,id:index?'n'+(++t.noteCounter):note.id,sourceIds:[id],x:(note.x||0)+index*(width+14),w:width}))});return t}catch{return window.DEVDEN_EMBEDDED_CONFIG?.topology?{...topoDefault(),...structuredClone(window.DEVDEN_EMBEDDED_CONFIG.topology)}:topoDefault()}}
-let topo=topoLoad(),topoSelected=null,topoSelection=[],topoConnecting=null,topoDrag=null,topoSkipClick=false,topoTool='select',topoZoom=1,topoUndo=[],topoNudgeUntil=0,topoGuideTimer=null;
-function topoSave(){try{localStorage.setItem(toolkitStorageKey(TOPO_KEY),JSON.stringify(topo));window.dispatchEvent(new Event('devden-state-updated'))}catch{}}
-function topoCheckpoint(){topoUndo.push(JSON.stringify(topo));if(topoUndo.length>70)topoUndo.shift()}
-function topoUndoLast(){if(!topoUndo.length)return;topo=JSON.parse(topoUndo.pop());topoSelection=[];topoSelected=null;topoConnecting=null;topoSave();renderTopology()}
+let topo=topoLoad(),topoSelected=null,topoSelection=[],topoConnecting=null,topoDrag=null,topoSkipClick=false,topoTool='select',topoZoom=1,topoUndo=[],topoRedo=[],topoHistoryPending=null,topoNudgeUntil=0,topoGuideTimer=null;
+// Collaboration-safe history stores only locally changed objects/properties.
+// In particular, a remote update must never become part of somebody's Undo.
+function topoHistorySnapshot(){return {topology:structuredClone(topo),checklist:structuredClone(state.checklistDevices||[])}}
+const topoHistoryEqual=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function topoHistoryChanges(before,after){
+ const changes=[];
+ const deep=(kind,id,a,b,path=[])=>{
+  if(topoHistoryEqual(a,b))return;
+  if(a&&b&&typeof a==='object'&&typeof b==='object'&&!Array.isArray(a)&&!Array.isArray(b)){
+   for(const key of new Set([...Object.keys(a),...Object.keys(b)]))deep(kind,id,a[key],b[key],[...path,key]);
+  }else changes.push({kind,id,path,before:structuredClone(a),after:structuredClone(b)});
+ };
+ for(const kind of ['device','zone','note','link','checklist']){
+  const source=kind==='checklist'?before.checklist:before.topology[kind==='device'?'devices':kind==='zone'?'zones':kind==='note'?'notes':'links'];
+  const target=kind==='checklist'?after.checklist:after.topology[kind==='device'?'devices':kind==='zone'?'zones':kind==='note'?'notes':'links'];
+  const a=new Map(source.map(x=>[x.id,x])),b=new Map(target.map(x=>[x.id,x]));
+  for(const id of new Set([...a.keys(),...b.keys()])){
+   if(!a.has(id)||!b.has(id))changes.push({kind,id,path:null,before:a.has(id)?structuredClone(a.get(id)):undefined,after:b.has(id)?structuredClone(b.get(id)):undefined});
+   else deep(kind,id,a.get(id),b.get(id));
+  }
+ }
+ return changes;
+}
+function topoHistoryList(kind){return kind==='checklist'?(state.checklistDevices||=[]):topoList(kind)}
+function topoHistoryAt(object,path){return path.reduce((current,key)=>current?.[key],object)}
+function topoHistoryApply(changes,reverse){
+ let applied=0,skipped=0;
+ // Restore objects before property edits. Deletions are processed last.
+ const ordered=[...changes].sort((a,b)=>Number(a.path===null&&((reverse?a.before:a.after)===undefined))-Number(b.path===null&&((reverse?b.before:b.after)===undefined)));
+ for(const change of ordered){
+  const {kind,id,path}=change,list=topoHistoryList(change.kind);
+  const index=list.findIndex(x=>x.id===id),item=index<0?undefined:list[index],expected=reverse?change.after:change.before,value=reverse?change.before:change.after;
+  if(window.DevDenCollab&&kind!=='checklist'&&item&&!window.DevDenCollab.canEditRef({kind,id})){skipped++;continue}
+  if(path===null){
+   if(!topoHistoryEqual(item,expected)){skipped++;continue}
+   if(value===undefined){
+    // Never delete a teammate's newly added cable to our device.
+    if(kind==='device'&&topo.links.some(l=>(l.a===id||l.b===id)&&!changes.some(c=>c.kind==='link'&&c.id===l.id&&c.path===null&&(reverse?c.before:c.after)===undefined))){skipped++;continue}
+    if(index>=0)list.splice(index,1);
+   }else if(index>=0)list[index]=structuredClone(value);
+   else list.push(structuredClone(value));
+  }else{
+   if(!item||!topoHistoryEqual(topoHistoryAt(item,path),expected)){skipped++;continue}
+   const parent=topoHistoryAt(item,path.slice(0,-1)),key=path.at(-1);
+   if(!parent||typeof parent!=='object'){skipped++;continue}
+   if(value===undefined)delete parent[key];else parent[key]=structuredClone(value);
+  }
+  applied++;
+ }
+ return {applied,skipped};
+}
+function topoSave(){
+ const editing=Boolean(document.activeElement?.matches('#topo-board input:not([readonly]),#topo-board textarea:not([readonly])'));
+ if(topoHistoryPending&&!editing){
+  const changes=topoHistoryChanges(topoHistoryPending,topoHistorySnapshot());topoHistoryPending=null;
+  if(changes.length){topoUndo.push(changes);if(topoUndo.length>70)topoUndo.shift();topoRedo=[]}
+ }
+ try{localStorage.setItem(toolkitStorageKey(TOPO_KEY),JSON.stringify(topo));window.dispatchEvent(new Event('devden-state-updated'))}catch{}
+ topoUpdateSaveStatus();topoUpdateHistoryButtons();
+}
+function topoCheckpoint(){if(!topoHistoryPending)topoHistoryPending=topoHistorySnapshot()}
+function topoTravelHistory(reverse){
+ if(topoHistoryPending){topoSave();if(topoHistoryPending)return}
+ const from=reverse?topoUndo:topoRedo,to=reverse?topoRedo:topoUndo;
+ if(!from.length)return;
+ const changes=from.pop(),before=topoHistorySnapshot(),result=topoHistoryApply(changes,reverse);
+ if(result.applied){
+  const after=topoHistorySnapshot();to.push(topoHistoryChanges(reverse?after:before,reverse?before:after));
+  // For Undo the redo entry represents afterUndo -> beforeUndo; for Redo
+  // the undo entry represents beforeRedo -> afterRedo.
+  topoSelection=topoSelection.filter(ref=>Boolean(topoItem(ref)));topoSelected=topoSelection.at(-1)||null;
+  try{localStorage.setItem(toolkitStorageKey('devden-toolkit-v2'),JSON.stringify(state))}catch{}
+  topoSave();topoRefresh();
+ }
+ if(result.skipped){const msg=`${result.skipped} change(s) skipped: another member changed or locked the item.`;const status=$('topo-search-feedback');if(status)status.textContent=msg;else console.info(msg)}
+ topoUpdateHistoryButtons();
+}
+function topoUndoLast(){topoTravelHistory(true)}
+function topoRedoLast(){topoTravelHistory(false)}
+function topoUpdateHistoryButtons(){const undo=$('topo-undo'),redo=$('topo-redo');if(undo)undo.disabled=!topoUndo.length;if(redo)redo.disabled=!topoRedo.length}
 function topoPosition(d){return {x:d.x??140,y:d.y??140}}
 function topoSafe(s){return esc(String(s??''))}
 function topoList(kind){return kind==='device'?topo.devices:kind==='zone'?topo.zones:kind==='link'?topo.links:topo.notes}
@@ -1201,8 +1278,8 @@ function topoUpdateStatus(){const s=$('topo-status');if(s)s.textContent=`${topo.
 function topoSetTool(mode){topoTool=mode;topoConnecting=null;topoUpdateStatus()}
 function topoCancel(){if(document.activeElement?.matches('#topo-board input:not([readonly]),#topo-board textarea:not([readonly])')){document.activeElement.blur();return}if(topoConnecting){topoConnecting=null;topoRefresh();return}if(topoTool!=='select'){topoSetTool('select');return}topoClear()}
 let topoPointerController=null;
-function renderTopology(){topoPointerController?.abort();topoPointerController=new AbortController();topoTool='select';topoConnecting=null;title('NETWORK TOPOLOGY','Build physical and logical diagrams. Double-click text to edit. V: Select · C: Wire · Esc: Exit.');content.insertAdjacentHTML('beforeend',`<div class="topo-toolbar"><div class="topo-device-tools"><span class="topo-tool-label">ADD</span>${TOPO_TYPES.map(t=>`<button data-add-type="${t}" title="Add ${t}"><span class="topo-tool-icon">${topoIcon(t)}</span>${t}</button>`).join('')}<button id="topo-add-zone">▧ LAN / Subnet</button><button id="topo-add-note">+ Text</button></div><div class="topo-tool-row"><div class="tool-mode-switch"><button id="topo-physical" class="${topo.view==='physical'?'selected':''}">Physical</button><button id="topo-logical" class="${topo.view==='logical'?'selected':''}">Logical</button></div><button id="topo-mode-select">↖ Select</button><button id="topo-mode-wire">⌁ Wire</button><div id="topo-cable-choices" class="topo-cable-choices hidden"><button data-cable="normal">━ Normal</button><button data-cable="crossover">━ Crossover</button><button data-cable="wireless">┄ Wireless</button></div><button id="topo-lock">🔒 Lock selected</button><button id="topo-delete">Delete</button><button id="topo-undo">↶ Undo</button><button id="topo-unlock-all">Unlock all</button><button id="topo-fullscreen">⛶ Fullscreen</button><button id="topo-export">Physical PNG</button><button id="topo-export-logical">Logical PNG</button><button id="topo-reset">Reset</button></div></div><div class="topo-hint">Select: tap an item to select; Ctrl+click adds · Wire: click endpoint A, then B; repeat · Double-click text to edit · Delete removes selected · Ctrl+wheel / pinch zoom · Scrollbars to pan · Ctrl+C/V copy/paste · Ctrl+D duplicate · Shift-drag locks axis · Arrows 1 px / Shift 10 px</div><div class="topo-viewport" id="topo-viewport"><div id="topo-board" class="topo-board"><svg id="topo-links" class="topo-links" width="1400" height="850" viewBox="0 0 1400 850"></svg><div id="topo-labels" class="topo-labels"></div></div></div><div class="topo-bottom"><span id="topo-status" aria-live="polite"></span><span>Normal <i class="topo-legend normal"></i> Crossover <i class="topo-legend crossover"></i> Wireless <i class="topo-legend wireless"></i></span></div>`);
-topoCompactToolbar();content.querySelectorAll('[data-add-type]').forEach(b=>b.onclick=()=>topoAdd(b.dataset.addType));$('topo-add-zone').onclick=topoAddZone;$('topo-add-note').onclick=topoAddNote;for(const view of ['physical','logical'])$('topo-'+view).onclick=()=>{topo.view=view;topoConnecting=null;topoSave();renderTopology()};$('topo-mode-select').onclick=()=>topoSetTool('select');$('topo-mode-wire').onclick=()=>topoSetTool('wire');content.querySelectorAll('[data-cable]').forEach(b=>b.onclick=()=>{topo.cable=b.dataset.cable;topoSave();topoUpdateStatus()});$('topo-lock').onclick=topoToggleLock;$('topo-delete').onclick=topoDelete;$('topo-undo').onclick=topoUndoLast;$('topo-export').onclick=()=>topoExportPNG('physical');$('topo-export-logical').onclick=()=>topoExportPNG('logical');$('topo-unlock-all').onclick=()=>{topoCheckpoint();for(const kind of ['device','zone','note','link'])for(const item of topoList(kind))item.locked=false;topoSave();topoRefresh()};$('topo-fullscreen').onclick=()=>{const on=document.body.classList.toggle('topo-fullscreen');$('topo-fullscreen').textContent=on?'⛶ Exit fullscreen':'⛶ Fullscreen'};$('topo-reset').onclick=()=>{if(confirm('Reset the entire topology? All devices, links, LANs and notes will be deleted.')){topoCheckpoint();topo=topoDefault();topoClear();topoConnecting=null;topoSave();renderTopology()}};const board=$('topo-board');board.tabIndex=0;board.style.zoom=topoZoom;topoBindViewport();$('topo-fullscreen').textContent=document.body.classList.contains('topo-fullscreen')?'⛶ Exit fullscreen':'⛶ Fullscreen';
+function renderTopology(){topoPointerController?.abort();topoPointerController=new AbortController();topoTool='select';topoConnecting=null;title('NETWORK TOPOLOGY','Build physical and logical diagrams. Double-click text to edit. V: Select · C: Wire · Esc: Exit.');content.insertAdjacentHTML('beforeend',`<div class="topo-toolbar"><div class="topo-device-tools"><span class="topo-tool-label">ADD</span>${TOPO_TYPES.map(t=>`<button data-add-type="${t}" title="Add ${t}"><span class="topo-tool-icon">${topoIcon(t)}</span>${t}</button>`).join('')}<button id="topo-add-zone">▧ LAN / Subnet</button><button id="topo-add-note">+ Text</button></div><div class="topo-tool-row"><div class="tool-mode-switch"><button id="topo-physical" class="${topo.view==='physical'?'selected':''}">Physical</button><button id="topo-logical" class="${topo.view==='logical'?'selected':''}">Logical</button></div><button id="topo-mode-select">↖ Select</button><button id="topo-mode-wire">⌁ Wire</button><div id="topo-cable-choices" class="topo-cable-choices hidden"><button data-cable="normal">━ Normal</button><button data-cable="crossover">━ Crossover</button><button data-cable="wireless">┄ Wireless</button></div><button id="topo-lock">🔒 Lock selected</button><button id="topo-delete">Delete</button><button id="topo-undo">↶ Undo</button><button id="topo-redo" title="Redo · Ctrl+Y">↷ Redo</button><button id="topo-unlock-all">Unlock all</button><button id="topo-fit" title="Fit topology to screen · Ctrl+0">⊞ Fit</button><button id="topo-fullscreen">⛶ Fullscreen</button><button id="topo-export">Physical PNG</button><button id="topo-export-logical">Logical PNG</button><button id="topo-reset">Reset</button></div></div><div class="topo-hint">Select: tap an item to select; Ctrl+click adds · Wire: click endpoint A, then B; repeat · Double-click text to edit · Delete removes selected · Ctrl+wheel / pinch zoom · Scrollbars to pan · Ctrl+C/V copy/paste · Ctrl+D duplicate · Shift-drag locks axis · Arrows 1 px / Shift 10 px</div><div class="topo-viewport" id="topo-viewport"><div id="topo-board" class="topo-board"><svg id="topo-links" class="topo-links" width="1400" height="850" viewBox="0 0 1400 850"></svg><div id="topo-labels" class="topo-labels"></div></div></div><div class="topo-bottom"><span id="topo-status" aria-live="polite"></span><span id="topo-save-indicator" class="topo-save-indicator" aria-live="polite">Saved locally</span><span id="topo-search-feedback" class="topo-search-feedback" aria-live="polite"></span><span>Normal <i class="topo-legend normal"></i> Crossover <i class="topo-legend crossover"></i> Wireless <i class="topo-legend wireless"></i></span></div>`);
+topoCompactToolbar();content.querySelectorAll('[data-add-type]').forEach(b=>b.onclick=()=>topoAdd(b.dataset.addType));$('topo-add-zone').onclick=topoAddZone;$('topo-add-note').onclick=topoAddNote;for(const view of ['physical','logical'])$('topo-'+view).onclick=()=>{topo.view=view;topoConnecting=null;topoSave();renderTopology()};$('topo-mode-select').onclick=()=>topoSetTool('select');$('topo-mode-wire').onclick=()=>topoSetTool('wire');content.querySelectorAll('[data-cable]').forEach(b=>b.onclick=()=>{topo.cable=b.dataset.cable;topoSave();topoUpdateStatus()});$('topo-lock').onclick=topoToggleLock;$('topo-delete').onclick=topoDelete;$('topo-undo').onclick=topoUndoLast;$('topo-redo').onclick=topoRedoLast;$('topo-fit').onclick=topoFitToScreen;$('topo-export').onclick=()=>topoExportPNG('physical');$('topo-export-logical').onclick=()=>topoExportPNG('logical');$('topo-unlock-all').onclick=()=>{topoCheckpoint();for(const kind of ['device','zone','note','link'])for(const item of topoList(kind))item.locked=false;topoSave();topoRefresh()};$('topo-fullscreen').onclick=()=>{const on=document.body.classList.toggle('topo-fullscreen');$('topo-fullscreen').textContent=on?'⛶ Exit fullscreen':'⛶ Fullscreen'};$('topo-reset').onclick=()=>{if(confirm('Reset the entire topology? All devices, links, LANs and notes will be deleted.')){topoCheckpoint();topo=topoDefault();topoClear();topoConnecting=null;topoSave();renderTopology()}};const board=$('topo-board');board.tabIndex=0;board.style.zoom=topoZoom;topoBindViewport();topoBindSearch();topoUpdateSaveStatus();topoUpdateHistoryButtons();$('topo-fullscreen').textContent=document.body.classList.contains('topo-fullscreen')?'⛶ Exit fullscreen':'⛶ Fullscreen';
 function getTarget(e){
  // Always give physical devices priority over the LAN background, cable labels and SVG layers.
  const direct=e.target.closest?.('.topo-node,.topo-note');
@@ -1260,7 +1337,7 @@ const release=e=>{if(!topoDrag||topoDrag.pointerId!==e.pointerId)return;const d=
  }
  topoDrag=null;if(wasMove||moved)topoSkipClick=true;if(moved){topoNudgeUntil=Date.now()+800;clearTimeout(topoGuideTimer);topoGuideTimer=setTimeout(()=>{topoNudgeUntil=0;topoGuides()},810);topoSave();topoRefresh()}};window.addEventListener('pointerup',release,{capture:true,signal:topoPointerController.signal});window.addEventListener('pointercancel',release,{capture:true,signal:topoPointerController.signal});
 board.addEventListener('keydown',e=>{if(e.target.matches('input:not([readonly]),textarea:not([readonly]),select'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();topoDelete();return}if(e.key==='Enter'&&e.target.closest('.topo-node')){e.preventDefault();e.target.querySelector('.topo-node-name')?.dispatchEvent(new MouseEvent('dblclick'));return}});topoRefresh()}
-document.addEventListener('keydown',e=>{if(active!=='topology')return;if(e.target.closest('input:not([readonly]),textarea:not([readonly]),select')){if(e.key==='Escape'){e.target.blur();e.preventDefault()}return}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(topoNudge(e))return;}if(e.key==='Escape'){e.preventDefault();if(content.querySelector('.topo-menu[open]')){content.querySelectorAll('.topo-menu[open]').forEach(d=>d.open=false)}else if(document.body.classList.contains('topo-fullscreen')){document.body.classList.remove('topo-fullscreen');$('topo-fullscreen').textContent='⛶ Fullscreen'}else topoCancel()}else if((e.key==='Delete'||e.key==='Backspace')&&!e.target.closest('#topo-board')){e.preventDefault();topoDelete()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();topoUndoLast()}else if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&e.key.toLowerCase()==='v'){topoSetTool('select')}else if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&e.key.toLowerCase()==='c'){topoSetTool('wire')}});
+document.addEventListener('keydown',e=>{if(active!=='topology')return;if(e.target.closest('input:not([readonly]),textarea:not([readonly]),select')){if(e.key==='Escape'){e.target.blur();e.preventDefault()}return}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(topoNudge(e))return;}if(e.key==='Escape'){e.preventDefault();if(content.querySelector('.topo-menu[open]')){content.querySelectorAll('.topo-menu[open]').forEach(d=>d.open=false)}else if(document.body.classList.contains('topo-fullscreen')){document.body.classList.remove('topo-fullscreen');$('topo-fullscreen').textContent='⛶ Fullscreen'}else topoCancel()}else if((e.key==='Delete'||e.key==='Backspace')&&!e.target.closest('#topo-board')){e.preventDefault();topoDelete()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)topoRedoLast();else topoUndoLast()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();topoRedoLast()}else if((e.ctrlKey||e.metaKey)&&e.key==='0'){e.preventDefault();topoFitToScreen()}else if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&e.key.toLowerCase()==='v'){topoSetTool('select')}else if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&e.key.toLowerCase()==='c'){topoSetTool('wire')}});
 function topoExportPNG(view=topo.view,returnCanvas=false){const canvas=document.createElement('canvas');const bounds=topoBounds();const resolution=returnCanvas?Math.min(3,Math.sqrt(16000000/((bounds.right-bounds.left)*(bounds.bottom-bounds.top)))):1;canvas.width=Math.ceil((bounds.right-bounds.left)*resolution);canvas.height=Math.ceil((bounds.bottom-bounds.top)*resolution);const c=canvas.getContext('2d');c.scale(resolution,resolution);c.translate(-bounds.left,-bounds.top);c.fillStyle='#142130';c.fillRect(bounds.left,bounds.top,canvas.width,canvas.height);for(let x=Math.floor(bounds.left/25)*25;x<bounds.right;x+=25)for(let y=Math.floor(bounds.top/25)*25;y<bounds.bottom;y+=25){c.fillStyle='#30445c';c.fillRect(x,y,1,1)}for(const z of topo.zones){c.fillStyle=z.color+'24';c.strokeStyle=z.color;c.lineWidth=2;c.fillRect(z.x,z.y,z.w,z.h);c.strokeRect(z.x,z.y,z.w,z.h);c.font='bold 16px Segoe UI, Arial, sans-serif';c.textAlign='center';c.fillStyle=z.color;c.fillText(topoZoneText(z,view).name,z.x+z.w/2,z.y+25);c.font='13px Consolas, monospace';c.textAlign='right';c.fillText(topoZoneText(z,view).network,z.x+z.w-14,z.y+z.h-14)}
 for(const l of topo.links){const a=topo.devices.find(d=>d.id===l.a),b=topo.devices.find(d=>d.id===l.b);if(!a||!b)continue;const x1=a.x,y1=a.y,x2=b.x,y2=b.y;c.strokeStyle=l.type==='crossover'?'#e2a46c':l.type==='wireless'?'#b89ada':'#91a6b8';c.lineWidth=3;c.setLineDash(l.type==='wireless'?[8,7]:[]);c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.setLineDash([]);for(const [slot,t] of [['a',Math.min(.43,Math.max(.22,115/Math.max(1,Math.hypot(x2-x1,y2-y1))))],['middle',.5],['b',1-Math.min(.43,Math.max(.22,115/Math.max(1,Math.hypot(x2-x1,y2-y1))))]]){const text=l[view]?.[slot];if(!text)continue;let mx=x1+(x2-x1)*t,my=y1+(y2-y1)*t;c.font='12px Consolas, monospace';const w=c.measureText(text).width+16;if(slot!=='middle'){const dx=x2-x1,dy=y2-y1,length=Math.hypot(dx,dy)||1,ux=dx/length,uy=dy/length,edge=Math.min(Math.abs(ux)>.001?60/Math.abs(ux):Infinity,Math.abs(uy)>.001?42/Math.abs(uy):Infinity),distance=edge+Math.abs(ux)*w/2+Math.abs(uy)*13+8;if(distance<length*.4){const along=slot==='a'?distance:length-distance;mx=x1+ux*along;my=y1+uy*along}else{const nx=-uy,ny=ux,offset=Math.abs(nx)*(60+w/2)+Math.abs(ny)*55+8,sign=slot==='a'?1:-1;mx+=nx*offset*sign;my+=ny*offset*sign}}c.fillStyle='#172638';c.fillRect(mx-w/2,my-13,w,26);c.fillStyle='#e1eefb';c.textAlign='center';c.fillText(text,mx,my+5)}}
 for(const d of topo.devices){c.fillStyle='#25384b';c.strokeStyle='#8595a5';c.lineWidth=2;c.beginPath();c.roundRect(d.x-60,d.y-42,120,84,9);c.fill();c.stroke();c.textAlign='center';c.fillStyle='#d4dae1';c.font='bold 15px Segoe UI, Arial, sans-serif';c.fillText(d.type,d.x,d.y-15);c.fillStyle='#fff';c.fillText(d.name,d.x,d.y+8);c.fillStyle='#b8c8d8';c.font='12px Consolas, monospace';c.fillText(view==='physical'?d.ports:d.ip,d.x,d.y+29)}for(const n of topo.notes){if(n.scope!=='both'&&n.scope!==view)continue;if(n.type==='chartMirror'){topoDrawMirrorPNG(c,n);continue}c.font='14px Segoe UI, Arial, sans-serif';c.fillStyle='#e5f0fa';c.textAlign='left';for(const [i,line] of String(n[view]||'').split('\n').entries())c.fillText(line,n.x,n.y+i*18)}if(returnCanvas)return canvas;const a=document.createElement('a');a.download='DevDen-Topology-'+view+'.png';a.href=canvas.toDataURL('image/png');document.body.append(a);a.click();a.remove()}
@@ -1304,6 +1381,43 @@ function topoExpandBoard(){const b=$('topo-board');if(!b)return;const r=topoBoun
 function topoItemBounds(ref){const item=topoItem(ref);const element=$('topo-board')?.querySelector(`[data-${ref.kind}="${ref.id}"]`);const w=item.w||(element?.offsetWidth||94),h=item.h||(element?.offsetHeight||65);const left=ref.kind==='device'?item.x-w/2:item.x,top=ref.kind==='device'?item.y-h/2:item.y;return{left,top,right:left+w,bottom:top+h,x:[left+w/2,left,left+w],y:[top+h/2,top,top+h]}}
 function topoGuides(){const board=$('topo-board');if(!board)return;board.querySelectorAll('.topo-guide').forEach(e=>e.remove());const selected=topoSelection.filter(s=>s.kind!=='link'&&topoItem(s));if(!(topoDrag?.type==='move'&&topoDrag.moved)&&Date.now()>topoNudgeUntil)return;const tolerance=.000001;for(const axis of ['x','y']){let best=null;for(const ref of selected){const a=topoItemBounds(ref);for(const kind of ['device','zone','note'])for(const item of topoList(kind)){if(topoContains(kind,item.id)||kind==='note'&&item.scope!=='both'&&item.scope!==topo.view)continue;const b=topoItemBounds({kind,id:item.id});for(let i=0;i<3;i++){const distance=Math.abs(a[axis][i]-b[axis][i]);if(distance<=tolerance&&(!best||distance<best.distance))best={a,b,position:b[axis][i],distance}}}}if(best){const line=document.createElement('div');line.className='topo-guide '+axis;const pad=8/topoZoom;if(axis==='x')Object.assign(line.style,{left:best.position+'px',top:Math.min(best.a.top,best.b.top)-pad+'px',height:Math.max(best.a.bottom,best.b.bottom)-Math.min(best.a.top,best.b.top)+pad*2+'px',width:1/topoZoom+'px'});else Object.assign(line.style,{top:best.position+'px',left:Math.min(best.a.left,best.b.left)-pad+'px',width:Math.max(best.a.right,best.b.right)-Math.min(best.a.left,best.b.left)+pad*2+'px',height:1/topoZoom+'px'});board.append(line)}}}
 function topoNudge(e){const moving=topoSelection.filter(s=>s.kind!=='link'&&topoItem(s)&&!topoItem(s).locked);if(!moving.length)return false;e.preventDefault();topoNudgeUntil=Date.now()+450;clearTimeout(topoGuideTimer);topoGuideTimer=setTimeout(()=>{topoNudgeUntil=0;topoGuides()},460);if(!e.repeat)topoCheckpoint();const step=e.shiftKey?10:1;for(const ref of moving){const item=topoItem(ref);item.x+=(e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0);item.y+=(e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0)}topoSave();topoRefresh();return true}
+function topoSceneBounds(){
+ const refs=[...topo.devices.map(x=>({kind:'device',id:x.id})),...topo.zones.map(x=>({kind:'zone',id:x.id})),...topo.notes.filter(x=>x.scope==='both'||x.scope===topo.view).map(x=>({kind:'note',id:x.id}))];
+ if(!refs.length)return {left:0,top:0,right:1200,bottom:720};
+ const bounds=refs.map(topoItemBounds);
+ return {left:Math.min(...bounds.map(b=>b.left)),top:Math.min(...bounds.map(b=>b.top)),right:Math.max(...bounds.map(b=>b.right)),bottom:Math.max(...bounds.map(b=>b.bottom))};
+}
+function topoCenterOn(x,y){
+ const v=$('topo-viewport'),b=$('topo-board');if(!v||!b)return;
+ const marginLeft=parseFloat(b.style.marginLeft)||0,marginTop=parseFloat(b.style.marginTop)||0;
+ v.scrollLeft=(x+marginLeft)*topoZoom-v.clientWidth/2;
+ v.scrollTop=(y+marginTop)*topoZoom-v.clientHeight/2;
+ topoGrid();
+}
+function topoFitToScreen(){
+ const v=$('topo-viewport'),b=$('topo-board');if(!v||!b)return;
+ const scene=topoSceneBounds(),w=Math.max(1,scene.right-scene.left),h=Math.max(1,scene.bottom-scene.top);
+ topoZoom=Math.max(.15,Math.min(2.5,Math.min((v.clientWidth-100)/w,(v.clientHeight-100)/h)));
+ b.style.zoom=topoZoom;topoExpandBoard();topoCenterOn((scene.left+scene.right)/2,(scene.top+scene.bottom)/2);
+}
+function topoSearchCandidates(){
+ return [...topo.devices.map(item=>({kind:'device',item,search:[item.name,item.type,item.ip,item.ports].join(' ')})),
+ ...topo.zones.map(item=>({kind:'zone',item,search:[item.name,item.network,item.labels?.physical?.name,item.labels?.logical?.name,item.labels?.physical?.network,item.labels?.logical?.network].join(' ')})),
+ ...topo.notes.filter(item=>item.type!=='chartMirror').map(item=>({kind:'note',item,search:[item.physical,item.logical].join(' ')}))];
+}
+function topoSearchGo(){
+ const input=$('topo-search'),feedback=$('topo-search-feedback');if(!input)return;
+ const term=input.value.trim().toLowerCase();if(!term){if(feedback)feedback.textContent='';return}
+ const matches=topoSearchCandidates().filter(x=>x.search.toLowerCase().includes(term));
+ if(!matches.length){if(feedback)feedback.textContent='No matching device or IP';return}
+ const current=topoSelection[0],index=matches.findIndex(x=>x.kind===current?.kind&&x.item.id===current?.id),match=matches[(index+1)%matches.length];
+ topoSelect(match.kind,match.item.id);const bounds=topoItemBounds({kind:match.kind,id:match.item.id});
+ topoCenterOn((bounds.left+bounds.right)/2,(bounds.top+bounds.bottom)/2);
+ if(feedback)feedback.textContent=matches.length>1?`${index<0?1:(index+1)%matches.length+1} of ${matches.length} matches`:match.item.name||'Found';
+}
+function topoBindSearch(){const input=$('topo-search'),go=$('topo-search-go');if(!input||!go)return;go.onclick=topoSearchGo;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();topoSearchGo()}else if(e.key==='Escape'){e.stopPropagation();input.blur()}}}
+function topoUpdateSaveStatus(){const element=$('topo-save-indicator');if(!element)return;const status=window.DevDenGroupStatus?.current?.()||'Saved locally';element.textContent=status;element.title=status}
+window.addEventListener('devden-group-status',topoUpdateSaveStatus);
 function topoGrid(){const v=$('topo-viewport'),b=$('topo-board');if(!v||!b)return;const x=(parseFloat(b.style.marginLeft)||0)*topoZoom-v.scrollLeft,y=(parseFloat(b.style.marginTop)||0)*topoZoom-v.scrollTop;v.style.backgroundSize=`${25*topoZoom}px ${25*topoZoom}px`;v.style.backgroundPosition=`${x}px ${y}px`}
 function topoCompactToolbar(){
  const toolbar=content.querySelector('.topo-toolbar');const oldTools=content.querySelector('.topo-device-tools'),oldRow=content.querySelector('.topo-tool-row');
@@ -1312,10 +1426,11 @@ function topoCompactToolbar(){
  const edit=menu('Edit ▾','topo-edit-menu');for(const id of ['topo-unlock-all','topo-reset'])edit.panel.append($(id));
  const duplicate=document.createElement('button');duplicate.textContent='Duplicate';duplicate.title='Ctrl+D';duplicate.onclick=()=>{topoCopy();topoPaste()};edit.panel.prepend(duplicate);
  const exp=menu('Export ▾','topo-export-menu');exp.panel.append($('topo-export'),$('topo-export-logical'));
- const help=menu('?','topo-help-menu');help.d.querySelector('summary').setAttribute('aria-label','Keyboard and mouse shortcuts');help.panel.innerHTML='<strong>Shortcuts</strong><dl><dt>Move selected</dt><dd>Arrows · Shift = 10 px</dd><dt>Zoom / scroll</dt><dd>Ctrl+wheel or pinch / scrollbars</dd><dt>Edit text</dt><dd>Double-click · Enter saves · Esc cancels</dd><dt>Copy / paste / duplicate</dt><dd>Ctrl+C / Ctrl+V / Ctrl+D</dd><dt>Select / wire / exit</dt><dd>V / C / Esc</dd><dt>Constrain movement</dt><dd>Shift+drag</dd></dl>';
+ const help=menu('?','topo-help-menu');help.d.querySelector('summary').setAttribute('aria-label','Keyboard and mouse shortcuts');help.panel.innerHTML='<strong>Shortcuts</strong><dl><dt>Move selected</dt><dd>Arrows · Shift = 10 px</dd><dt>Move canvas</dt><dd>Hold middle mouse and drag / two fingers</dd><dt>Zoom / scroll</dt><dd>Ctrl+wheel or pinch / scrollbars</dd><dt>Fit drawing</dt><dd>Ctrl+0 / Fit</dd><dt>Undo / Redo</dt><dd>Ctrl+Z / Ctrl+Y</dd><dt>Find device</dt><dd>Search box + Enter</dd><dt>Edit text</dt><dd>Double-click · Enter saves · Esc cancels</dd><dt>Copy / paste / duplicate</dt><dd>Ctrl+C / Ctrl+V / Ctrl+D</dd><dt>Select / wire / exit</dt><dd>V / C / Esc</dd><dt>Constrain movement</dt><dd>Shift+drag</dd></dl>';
  const modes=document.createElement('div');modes.className='topo-primary-modes';modes.append($('topo-mode-select'),$('topo-mode-wire'));
- const view=oldRow.querySelector('.tool-mode-switch');view.classList.add('topo-view-switch');view.setAttribute('role','group');view.setAttribute('aria-label','Topology view');$('topo-physical').innerHTML='<span aria-hidden="true">▣</span> Physical';$('topo-logical').innerHTML='<span aria-hidden="true">⌘</span> Logical';$('topo-physical').title='Physical view · Device ports and cable connections';$('topo-logical').title='Logical view · IP addresses and subnets';for(const mode of ['physical','logical'])$('topo-'+mode).setAttribute('aria-pressed',String(topo.view===mode));const undo=$('topo-undo'),full=$('topo-fullscreen'),cables=$('topo-cable-choices');full.title='Expand workspace · Esc to exit';undo.title='Undo · Ctrl+Z';
- toolbar.replaceChildren(view,modes,deviceGroup,add.d,undo,$('topo-lock'),$('topo-delete'),edit.d,exp.d,full,help.d,cables);
+ const view=oldRow.querySelector('.tool-mode-switch');view.classList.add('topo-view-switch');view.setAttribute('role','group');view.setAttribute('aria-label','Topology view');$('topo-physical').innerHTML='<span aria-hidden="true">▣</span> Physical';$('topo-logical').innerHTML='<span aria-hidden="true">⌘</span> Logical';$('topo-physical').title='Physical view · Device ports and cable connections';$('topo-logical').title='Logical view · IP addresses and subnets';for(const mode of ['physical','logical'])$('topo-'+mode).setAttribute('aria-pressed',String(topo.view===mode));const undo=$('topo-undo'),redo=$('topo-redo'),fit=$('topo-fit'),full=$('topo-fullscreen'),cables=$('topo-cable-choices');full.title='Expand workspace · Esc to exit';undo.title='Undo · Ctrl+Z';redo.title='Redo · Ctrl+Y / Ctrl+Shift+Z';
+ const search=document.createElement('div');search.className='topo-search-box';search.innerHTML='<input id="topo-search" type="search" aria-label="Search devices and IPs" placeholder="Find device / IP" autocomplete="off" spellcheck="false"><button type="button" id="topo-search-go" title="Find and center matching object">Find</button>';
+ toolbar.replaceChildren(view,modes,deviceGroup,add.d,search,undo,redo,$('topo-lock'),$('topo-delete'),edit.d,exp.d,fit,full,help.d,cables);
  content.querySelector('.topo-hint')?.remove();content.querySelector('.subtitle')?.remove();
  toolbar.querySelectorAll('details').forEach(d=>{d.addEventListener('toggle',()=>{if(d.open)toolbar.querySelectorAll('details').forEach(other=>{if(other!==d)other.open=false})});d.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{d.open=false}))});
  for(const [id,text] of Object.entries({'topo-lock':'Lock selected','topo-delete':'Delete selected','topo-unlock-all':'Unlock all','topo-reset':'Reset diagram','topo-export':'Physical view · PNG','topo-export-logical':'Logical view · PNG'}))$(id).textContent=text;
@@ -1336,6 +1451,30 @@ function topoBindViewport(){const v=$('topo-viewport'),b=$('topo-board');
   v.scrollLeft=worldX*zoom-x;v.scrollTop=worldY*zoom-y;
   topoGrid();topoGuides();
  };
+ // League-style camera: middle-button drag pans this user's viewport only.
+ let middlePan=null;
+ v.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='mouse'||e.button!==1)return;
+  e.preventDefault();e.stopPropagation();
+  middlePan={id:e.pointerId,x:e.clientX,y:e.clientY};
+  v.classList.add('topo-middle-panning');
+  try{v.setPointerCapture(e.pointerId)}catch{}
+ },{capture:true,passive:false,signal});
+ window.addEventListener('pointermove',e=>{
+  if(!middlePan||e.pointerId!==middlePan.id)return;
+  e.preventDefault();e.stopPropagation();
+  v.scrollLeft-=e.clientX-middlePan.x;v.scrollTop-=e.clientY-middlePan.y;
+  middlePan.x=e.clientX;middlePan.y=e.clientY;
+ },{capture:true,passive:false,signal});
+ const endMiddle=e=>{
+  if(!middlePan||e.pointerId!==middlePan.id)return;
+  middlePan=null;v.classList.remove('topo-middle-panning');
+  try{if(v.hasPointerCapture(e.pointerId))v.releasePointerCapture(e.pointerId)}catch{}
+  e.preventDefault();e.stopPropagation();
+ };
+ window.addEventListener('pointerup',endMiddle,{capture:true,signal});
+ window.addEventListener('pointercancel',endMiddle,{capture:true,signal});
+ v.addEventListener('lostpointercapture',e=>{if(middlePan?.id===e.pointerId){middlePan=null;v.classList.remove('topo-middle-panning')}},{signal});
  v.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();zoomAt(topoZoom*Math.exp(-e.deltaY*.002),e.clientX,e.clientY)},{passive:false,signal});
  let pinch=null;
  const getGesture=()=>{const pts=[...topoTouchPointers.values()];if(pts.length<2)return null;const [a,c]=pts;return {distance:Math.max(1,Math.hypot(a.x-c.x,a.y-c.y)),x:(a.x+c.x)/2,y:(a.y+c.y)/2}};
@@ -1386,9 +1525,75 @@ function topoBindViewport(){const v=$('topo-viewport'),b=$('topo-board');
  v.addEventListener('scroll',topoGrid,{passive:true,signal});
  v.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault()},{signal});
 }
-function topoCopy(){const refs=topoSelection.filter(s=>s.kind!=='link');const ids=new Set(refs.filter(s=>s.kind==='device').map(s=>s.id));topoClipboard={items:refs.map(ref=>({kind:ref.kind,item:structuredClone(topoItem(ref))})),links:topo.links.filter(l=>ids.has(l.a)&&ids.has(l.b)).map(l=>structuredClone(l))};topoPasteCount=0}
-function topoDuplicateLAN(){const selected=topoSelection.find(x=>x.kind==='zone');const source=selected?topoItem(selected):topo.zones.at(-1);if(!source){alert('Create or select a LAN first.');return}const dialog=document.createElement('dialog');dialog.className='topo-duplicate-dialog';dialog.innerHTML='<form method="dialog"><h3>Duplicate LAN</h3><label><input type="checkbox" name="size" checked> LAN dimensions</label><label><input type="checkbox" name="devices"> Devices inside LAN</label><label><input type="checkbox" name="wires"> Internal connections</label><label><input type="checkbox" name="notes"> Text labels inside LAN</label><label><input type="checkbox" name="network"> Network ID / prefix</label><footer><button value="cancel">Cancel</button><button value="duplicate">Duplicate LAN</button></footer></form>';document.body.append(dialog);dialog.addEventListener('close',()=>{if(dialog.returnValue==='duplicate'){const opts=Object.fromEntries(['size','devices','wires','notes','network'].map(k=>[k,dialog.querySelector('[name="'+k+'"]').checked]));topoCheckpoint();const used=new Set(topo.zones.map(z=>/^LAN\s+(\d+)$/i.exec(z.name||'')).filter(Boolean).map(m=>+m[1]));let number=1;while(used.has(number))number++;const offset=35;const copy=structuredClone(source);copy.id='z'+crypto.randomUUID();topo.zoneCounter++;copy.name='LAN '+number;copy.color=TOPO_PALETTE[(number-1)%TOPO_PALETTE.length];copy.x+=offset;copy.y+=offset;copy.locked=false;if(!opts.size){copy.w=300;copy.h=220}if(!opts.network)copy.network='';if(copy.labels)for(const view of ['physical','logical'])if(copy.labels[view]){copy.labels[view].name=copy.name;copy.labels[view].network=opts.network?copy.labels[view].network:''}topo.zones.push(copy);const matches=item=>item.x>=source.x&&item.x<=source.x+source.w&&item.y>=source.y&&item.y<=source.y+source.h;const map=new Map();if(opts.devices)for(const d of topo.devices.filter(matches)){const duplicate=structuredClone(d);duplicate.id='d'+crypto.randomUUID();topo.counter++;duplicate.x+=offset;duplicate.y+=offset;duplicate.locked=false;map.set(d.id,duplicate.id);topo.devices.push(duplicate)}if(opts.wires&&opts.devices)for(const l of [...topo.links])if(map.has(l.a)&&map.has(l.b)){const duplicate=structuredClone(l);duplicate.id='l'+crypto.randomUUID();duplicate.a=map.get(l.a);duplicate.b=map.get(l.b);duplicate.locked=false;topo.links.push(duplicate)}if(opts.notes)for(const n of [...topo.notes].filter(matches)){const duplicate=structuredClone(n);duplicate.id='n'+crypto.randomUUID();topo.noteCounter++;duplicate.x+=offset;duplicate.y+=offset;duplicate.locked=false;topo.notes.push(duplicate)}topoSelection=[{kind:'zone',id:copy.id}];topoSelected=topoSelection[0];topoSave();topoRefresh()}dialog.remove()});dialog.showModal()}
-function topoPaste(){if(!topoClipboard?.items.length)return;topoCheckpoint();const offset=30*++topoPasteCount,map=new Map();topoSelection=[];for(const entry of topoClipboard.items){const item=structuredClone(entry.item),kind=entry.kind;const id=kind==='device'?('d'+crypto.randomUUID()):kind==='zone'?('z'+crypto.randomUUID()):('n'+crypto.randomUUID());if(kind==='device')topo.counter++;else if(kind==='zone')topo.zoneCounter++;else topo.noteCounter++;map.set(item.id,id);item.id=id;item.x+=offset;item.y+=offset;item.locked=false;if(kind==='zone'){const used=new Set(topo.zones.map(z=>/^LAN\s+(\d+)$/i.exec(z.name||'')).filter(Boolean).map(m=>+m[1]));let number=1;while(used.has(number))number++;item.name='LAN '+number;item.color=TOPO_PALETTE[(number-1)%TOPO_PALETTE.length];item.network='';if(item.labels){for(const v of ['physical','logical'])if(item.labels[v]){item.labels[v].name=item.name;item.labels[v].network=''}}}topoList(kind).push(item);topoSelection.push({kind,id})}for(const link of topoClipboard.links){const item=structuredClone(link);item.id='l'+crypto.randomUUID();item.a=map.get(link.a);item.b=map.get(link.b);item.locked=false;topo.links.push(item)}topoSelected=topoSelection.at(-1);topoSave();topoRefresh();$('topo-board').focus()}
+function topoClipboardFromRefs(refs,{includeChecklist=true}={}){
+ const known=new Set(refs.map(r=>r.kind+':'+r.id));
+ const zones=refs.filter(r=>r.kind==='zone').map(r=>topoItem(r)).filter(Boolean);
+ const inside=(zone,item)=>item.x>=zone.x&&item.x<=zone.x+zone.w&&item.y>=zone.y&&item.y<=zone.y+zone.h;
+ for(const z of zones){
+  for(const kind of ['device','note'])for(const item of topoList(kind))if(inside(z,item)&&!known.has(kind+':'+item.id)){
+   refs.push({kind,id:item.id});known.add(kind+':'+item.id);
+  }
+ }
+ const ids=new Set(refs.filter(s=>s.kind==='device').map(s=>s.id));
+ const selected=refs.map(ref=>({kind:ref.kind,item:structuredClone(topoItem(ref))})).filter(x=>x.item);
+ const checks=[];
+ if(includeChecklist)for(const device of selected.filter(x=>x.kind==='device').map(x=>x.item)){
+  const possible=(state.checklistDevices||[]).filter(c=>c.topologyDeviceId===device.id||(!c.topologyDeviceId&&c.name?.trim().toLowerCase()===device.name?.trim().toLowerCase()));
+  for(const c of possible)if(!checks.some(x=>x.id===c.id))checks.push(structuredClone(c));
+ }
+ return {items:selected,links:topo.links.filter(l=>ids.has(l.a)&&ids.has(l.b)).map(l=>structuredClone(l)),checklists:checks};
+}
+function topoCopy(){topoClipboard=topoClipboardFromRefs(topoSelection.filter(s=>s.kind!=='link').map(x=>({...x})));topoPasteCount=0}
+function topoDuplicateLAN(){
+ const selected=topoSelection.find(x=>x.kind==='zone');const source=selected?topoItem(selected):topo.zones.at(-1);
+ if(!source){alert('Create or select a LAN first.');return}
+ const dialog=document.createElement('dialog');dialog.className='topo-duplicate-dialog';
+ dialog.innerHTML='<form method="dialog"><h3>Duplicate LAN</h3><label><input type="checkbox" name="size" checked> LAN dimensions</label><label><input type="checkbox" name="devices" checked> Devices inside LAN</label><label><input type="checkbox" name="wires" checked> Internal connections</label><label><input type="checkbox" name="notes" checked> Text labels inside LAN</label><label><input type="checkbox" name="checklists" checked> Related checklists</label><label><input type="checkbox" name="network"> Network ID / prefix</label><footer><button value="cancel">Cancel</button><button value="duplicate">Duplicate LAN</button></footer></form>';
+ document.body.append(dialog);dialog.addEventListener('close',()=>{
+  if(dialog.returnValue==='duplicate'){
+   const opted=Object.fromEntries(['size','devices','wires','notes','checklists','network'].map(k=>[k,dialog.querySelector('[name="'+k+'"]')?.checked]));
+   const items=[{kind:'zone',item:structuredClone(source)}],inside=item=>item.x>=source.x&&item.x<=source.x+source.w&&item.y>=source.y&&item.y<=source.y+source.h;
+   if(opted.devices)items.push(...topo.devices.filter(inside).map(item=>({kind:'device',item:structuredClone(item)})));
+   if(opted.notes)items.push(...topo.notes.filter(inside).map(item=>({kind:'note',item:structuredClone(item)})));
+   const ids=new Set(items.filter(x=>x.kind==='device').map(x=>x.item.id));
+   const links=opted.wires?topo.links.filter(l=>ids.has(l.a)&&ids.has(l.b)).map(l=>structuredClone(l)):[];
+   const copy=topoClipboardFromRefs([{kind:'zone',id:source.id}],{includeChecklist:opted.checklists});
+   topoClipboard={items,links,checklists:opted.checklists?copy.checklists:[]};topoPasteCount=0;topoPaste({preserveNetwork:opted.network,zoneSize:opted.size});
+  }
+  dialog.remove();
+ });dialog.showModal();
+}
+function topoPaste(options={}){
+ if(!topoClipboard?.items.length)return;
+ topoCheckpoint();const offset=30*++topoPasteCount,map=new Map();topoSelection=[];
+ for(const entry of topoClipboard.items){
+  const item=structuredClone(entry.item),kind=entry.kind;
+  const id=(kind==='device'?'d':kind==='zone'?'z':'n')+crypto.randomUUID();
+  if(kind==='device')topo.counter++;else if(kind==='zone')topo.zoneCounter++;else topo.noteCounter++;
+  map.set(item.id,id);item.id=id;item.x+=offset;item.y+=offset;item.locked=false;
+  if(kind==='zone'){
+   const used=new Set(topo.zones.map(z=>/^LAN\s+(\d+)$/i.exec(z.name||'')).filter(Boolean).map(m=>+m[1]));let number=1;while(used.has(number))number++;
+   item.name='LAN '+number;item.color=TOPO_PALETTE[(number-1)%TOPO_PALETTE.length];if(!options.preserveNetwork)item.network='';
+   if(options.zoneSize===false){item.w=300;item.h=220}
+   if(item.labels)for(const v of ['physical','logical'])if(item.labels[v]){item.labels[v].name=item.name;if(!options.preserveNetwork)item.labels[v].network=''}
+  }
+  topoList(kind).push(item);topoSelection.push({kind,id});
+ }
+ for(const link of topoClipboard.links){
+  if(!map.has(link.a)||!map.has(link.b))continue;
+  const item=structuredClone(link);item.id='l'+crypto.randomUUID();item.a=map.get(link.a);item.b=map.get(link.b);item.locked=false;topo.links.push(item);
+ }
+ for(const checklist of topoClipboard.checklists||[]){
+  let source=checklist.topologyDeviceId;
+  if(!source){const match=topoClipboard.items.find(x=>x.kind==='device'&&x.item.name?.trim().toLowerCase()===checklist.name?.trim().toLowerCase());source=match?.item.id}
+  if(!map.has(source))continue;
+  const copied=structuredClone(checklist);copied.id='d'+crypto.randomUUID();copied.topologyDeviceId=map.get(source);
+  // Name follows the duplicated topology device; progress is deliberately reset.
+  copied.name=topo.devices.find(d=>d.id===copied.topologyDeviceId)?.name||copied.name;
+  copied.done=false;copied.checked=[];(state.checklistDevices||=[]).push(copied);
+ }
+ topoSelected=topoSelection.at(-1)||null;topoSave();checkpoint();topoRefresh();$('topo-board').focus({preventScroll:true});
+}
 document.addEventListener('keydown',e=>{if(active!=='topology'||e.target.closest('input:not([readonly]),textarea:not([readonly]),select'))return;if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='c'){e.preventDefault();topoCopy()}if(k==='v'){e.preventDefault();topoPaste()}if(k==='d'){e.preventDefault();topoCopy();topoPaste()}}});
 
 function plannerColors(i){return TOPO_PALETTE[i%TOPO_PALETTE.length]}
@@ -1510,7 +1715,7 @@ function restoreProject(item){
   state.checklistSelected=legacy.checklistSelected||null;
   topo={...topoDefault(),...structuredClone(item.topology||topoDefault())};
  }
- topo.notes ||= [];topoSelection=[];topoSelected=null;topoConnecting=null;topoUndo=[];
+ topo.notes ||= [];topoSelection=[];topoSelected=null;topoConnecting=null;topoUndo=[];topoRedo=[];topoHistoryPending=null;
  history=[JSON.stringify(state)];historyIndex=0;checkpoint();
  try{localStorage.setItem(toolkitStorageKey('devden-toolkit-v2'),JSON.stringify(state))}catch(e){alert('Unable to save restored project: '+e.message)}
  topoSave();
