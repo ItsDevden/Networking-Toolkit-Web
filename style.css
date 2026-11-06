@@ -39,8 +39,8 @@
 .topo-board{position:relative;width:1400px;height:850px;background-color:#142130;background-image:radial-gradient(#31445c 1px,transparent 1px);background-size:25px 25px;overflow:hidden;touch-action:none;user-select:none}
 .topo-links{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visible}
 .topo-labels{position:absolute;inset:0;z-index:6;pointer-events:none}
-.topo-link-wrap{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:center}
-.topo-wire-input{min-width:64px;height:29px;text-align:center;background:#172638;color:#e2eef8;border:1px solid #4c6c89;border-radius:5px;padding:4px 8px;font-family:Consolas,'Segoe UI',monospace;font-size:12px;box-shadow:0 0 0 5px #172638;outline-offset:3px;user-select:text}
+.topo-link-wrap{position:absolute;pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:center}
+.topo-wire-input{min-width:46px;height:28px;text-align:center;background:#172638;color:#e2eef8;border:1px solid #4c6c89;border-radius:5px;padding:3px 7px;font-family:Consolas,'Segoe UI',monospace;font-size:11px;box-shadow:0 0 0 4px #172638;outline-offset:3px;user-select:text}
 .topo-link-wrap.selected .topo-wire-input{border-color:#9bd8ff}
 .topo-node{position:absolute;transform:translate(-50%,-50%);z-index:5;width:132px;min-height:94px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 8px 7px;background:#263c54;border:1px solid #7a9abb;border-radius:10px;cursor:grab;box-shadow:0 4px 12px #0d172555;outline:none;touch-action:none}
 .topo-node.selected,.topo-node:focus-visible{border:2px solid #a8dbff;box-shadow:0 0 0 3px #5591bd55}
@@ -567,3 +567,135 @@ body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo
 .topo-save-indicator { display: inline-flex; margin-left: auto; align-items: center; opacity: .76; white-space: nowrap; font-size: 12px; }
 .topo-search-feedback { display: inline-flex; font-size: 12px; opacity: .76; margin-left: 8px; }
 @media (max-width: 720px) { .topo-search-box { min-width: unset; } .topo-search-box input { width: 110px; } }
+
+/* Topology interaction refinements */
+#topo-board .topo-link-wrap{z-index:25;pointer-events:none}
+#topo-board .topo-link-wrap .topo-wire-input:not(:placeholder-shown),#topo-board .topo-link-wrap.selected .topo-wire-input{pointer-events:auto}
+#topo-board .topo-link-wrap .topo-wire-input{box-shadow:0 0 0 2px #172638}
+#topo-board .topo-note.topo-sticky{z-index:10;min-width:110px;min-height:75px;max-width:none;padding:7px 8px;box-sizing:border-box;border-radius:7px;border:1px solid #c6a951;background:#f9e7a5;color:#493915;display:flex;flex-direction:column;gap:4px}
+#topo-board .topo-note.topo-sticky-warning{background:#f3c8c8;border-color:#c77878;color:#653331}
+#topo-board .topo-sticky-heading{font-size:12px;font-weight:700;cursor:grab;flex:none}
+#topo-board .topo-sticky textarea{width:100%;flex:1;min-height:20px;resize:none;border:0;outline:none;background:transparent;color:inherit;font:12px/1.35 'Segoe UI',sans-serif;box-sizing:border-box}
+#topo-board .topo-sticky-resize{position:absolute;right:1px;bottom:1px;z-index:3;cursor:nwse-resize;pointer-events:auto!important}
+#devden-sketch-colors{display:flex;align-items:center;gap:4px}
+#devden-sketch-colors .devden-color-swatch{width:19px;height:19px;min-width:19px;padding:0;border:2px solid #454b56;border-radius:50%;box-sizing:border-box}
+#devden-sketch-colors .devden-color-swatch.selected{outline:2px solid #d5dce6;outline-offset:1px}
+
+/* Board-anchored sketch ink travels with topology pan and zoom. */
+#devden-topo-ink{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;overflow:hidden}
+
+/* Sketch history controls share the Draw shortcut without another menu. */
+#devden-sketch-undo,#devden-sketch-redo{position:absolute;top:13px;z-index:30;width:28px;height:28px;border:1px solid #796988;border-radius:7px;background:#382d42;color:#f3d2ee;font-size:19px;line-height:1;cursor:pointer}
+#devden-sketch-undo{right:50px}
+#devden-sketch-redo{right:82px}
+#devden-sketch-undo:disabled,#devden-sketch-redo:disabled{opacity:.32;cursor:default}
+
+/* Header: all drawing-only controls grouped beside the pencil. */
+#sidebar header #devden-sketch-undo,
+#sidebar header #devden-sketch-redo{top:5px;right:auto;width:25px;height:25px;min-width:25px;min-height:25px;padding:0;line-height:23px;font-size:18px;border-radius:6px;z-index:35;box-shadow:0 2px 6px #0006}
+#sidebar header #devden-sketch-undo{left:35px}
+#sidebar header #devden-sketch-redo{left:65px}
+/* Rounder palette, with clearly defined circular color choices. */
+#devden-sketch-tools{border-radius:15px!important;padding:7px 9px!important;gap:8px!important}
+#devden-sketch-colors{gap:7px;align-items:center}
+#devden-sketch-colors .devden-color-swatch{width:24px;height:24px;min-width:24px;min-height:24px;border-radius:999px!important;border:2px solid #343441;box-shadow:0 1px 3px #0005;cursor:pointer}
+#devden-sketch-colors .devden-color-swatch.selected{outline:2px solid #f7e7ff;outline-offset:2px}
+#devden-sketch-tools button:not(.devden-color-swatch){border-radius:10px!important}
+
+/* Wire labels: compact by default, with legible text and a precise click target. */
+#topo-board .topo-wire-input{height:24px;min-width:38px;font-size:11px;line-height:17px;padding:2px 6px;box-shadow:0 0 0 1px #172638}
+#topo-board .topo-link-wrap{min-height:26px}
+
+/* Precise hitboxes: no invisible 12px halo stealing nearby selections. */
+#topo-board .topo-node::before,#topo-board .topo-note::before{pointer-events:none!important;content:none!important}
+#topo-board .topo-note{box-sizing:border-box;max-width:none}
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror){min-width:105px;min-height:58px;padding:5px;display:flex;overflow:hidden}
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{display:block;flex:1;min-width:0;min-height:0;width:100%;height:100%;max-width:100%;max-height:100%;box-sizing:border-box;resize:none}
+#topo-board .topo-note .topo-text-resize{position:absolute;right:0;bottom:0;width:17px;height:17px;z-index:4;pointer-events:auto;cursor:nwse-resize}
+#topo-board .topo-node input[readonly],#topo-board .topo-note textarea[readonly]{pointer-events:auto!important;cursor:text!important}
+#topo-board .topo-node input:not([readonly]),#topo-board .topo-note textarea:not([readonly]){pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important}
+#topo-board .topo-link-wrap{min-height:0!important;pointer-events:none!important}
+#topo-board .topo-link-wrap .topo-wire-input{pointer-events:auto!important;box-shadow:none!important}
+#topo-board .topo-link-wrap .topo-wire-input:placeholder-shown:not(:focus){pointer-events:none!important}
+
+/* Compact, adjustable sketch pen width. */
+#devden-sketch-tools .devden-pen-size{display:flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;color:#f7e5ff}
+#devden-pen-size{width:74px;min-width:62px;accent-color:#c995dc;cursor:pointer}
+#devden-pen-size-value{min-width:22px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Directly editable cable labels: targets never vanish when the field is empty. */
+#topo-board .topo-link-wrap{pointer-events:none!important}
+#topo-board .topo-link-wrap .topo-wire-input,#topo-board .topo-link-wrap .topo-wire-input:placeholder-shown:not(:focus){pointer-events:auto!important}
+#topo-board .topo-link-wrap .topo-wire-input:placeholder-shown:not(:focus){opacity:.4}
+#topo-board .topo-link-wrap.selected .topo-wire-input:placeholder-shown,#topo-board .topo-link-wrap .topo-wire-input:focus{opacity:1}
+/* Text boxes may shrink to a single line; precise resize handle remains. */
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror){min-width:52px;min-height:28px}
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{font-size:11px;line-height:15px;padding:2px 3px}
+
+/* Wire label visibility: blank fields appear only on their selected wire or during edit.
+   Their invisible placeholders must not intercept device clicks. */
+#topo-board .topo-link-wrap:not(.selected) .topo-wire-input:placeholder-shown:not(:focus){opacity:0!important;pointer-events:none!important}
+#topo-board .topo-link-wrap.selected .topo-wire-input:placeholder-shown,#topo-board .topo-link-wrap .topo-wire-input:focus{opacity:1!important;pointer-events:auto!important}
+
+/* Compact three-row drawing popover under the header pencil. */
+#devden-sketch-tools:not([hidden]){
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  width:310px!important;max-width:calc(100vw - 16px)!important;
+  box-sizing:border-box!important;white-space:normal!important;
+  gap:12px!important;padding:12px 14px!important;border-radius:16px!important;
+}
+#devden-sketch-tools .devden-sketch-row{display:flex;align-items:center;width:100%;min-width:0;box-sizing:border-box}
+#devden-sketch-tools .devden-sketch-actions{gap:8px}
+#devden-sketch-tools .devden-sketch-actions strong{font-size:13px;font-weight:650;margin-right:auto}
+#devden-sketch-tools .devden-sketch-actions button{min-height:28px!important;padding:4px 10px!important;font-size:12px!important}
+#devden-sketch-tools .devden-sketch-palette{justify-content:space-between;gap:7px}
+#devden-sketch-tools .devden-sketch-palette .devden-color-swatch{flex:0 0 29px;width:29px;height:29px;min-width:29px;min-height:29px;padding:0!important;border-radius:50%!important}
+#devden-sketch-tools .devden-pen-size{gap:9px;font-size:12px}
+#devden-sketch-tools .devden-pen-size input{flex:1;min-width:0;width:auto;accent-color:#c995dc}
+#devden-sketch-tools .devden-pen-size output{width:23px;min-width:23px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Topology stickies share the Notes palette and stay freely movable/resizable. */
+#topo-board .topo-note.topo-sticky{background:var(--topo-sticky-bg,#f1f1ed);border-color:var(--topo-sticky-border,#c4c9ca);color:#243348}
+#topo-board .topo-sticky-troubleshooting{--topo-sticky-bg:#fff2db;--topo-sticky-border:#e1be7d}
+#topo-board .topo-sticky-error{--topo-sticky-bg:#ffe7e9;--topo-sticky-border:#dca1a6}
+#topo-board .topo-sticky-solution{--topo-sticky-bg:#e3f7e9;--topo-sticky-border:#a4d6b2}
+#topo-board .topo-sticky-information{--topo-sticky-bg:#e4f1ff;--topo-sticky-border:#9ec3e5}
+#topo-board .topo-sticky-reminder{--topo-sticky-bg:#f0e7fc;--topo-sticky-border:#c1a5e3}
+#topo-board .topo-sticky-custom{--topo-sticky-bg:#f1f1ed;--topo-sticky-border:#c4c9ca}
+#topo-board .topo-sticky-heading{border-bottom:1px solid #3443;padding-bottom:4px}
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45;resize:none}
+
+/* Topology stickies mirror the dark, color-accented Notes sticky cards. */
+#topo-board .topo-note.topo-sticky{
+ --sticky-color:#929ba2; background:color-mix(in srgb,var(--sticky-color) 9%,#35333b)!important;
+ border:1px solid color-mix(in srgb,var(--sticky-color) 35%,#605969)!important;
+ border-left:3px solid var(--sticky-color)!important;border-radius:10px!important;
+ color:#ebe6ef!important;padding:9px 10px 11px!important;gap:4px!important;
+ min-width:125px;min-height:95px;display:flex;flex-direction:column;overflow:hidden;
+}
+#topo-board .topo-sticky-troubleshooting{--sticky-color:#b79a67!important}
+#topo-board .topo-sticky-error{--sticky-color:#bb797e!important}
+#topo-board .topo-sticky-solution{--sticky-color:#79ad95!important}
+#topo-board .topo-sticky-information{--sticky-color:#7b9ab4!important}
+#topo-board .topo-sticky-reminder{--sticky-color:#a18db8!important}
+#topo-board .topo-sticky-custom{--sticky-color:#929ba2!important}
+#topo-board .topo-sticky-heading{display:flex;align-items:center;gap:5px;color:var(--sticky-color);font-size:10px;letter-spacing:.055em;text-transform:uppercase;border-bottom:1px solid color-mix(in srgb,var(--sticky-color) 18%,#625968);padding:0 0 5px;min-height:18px}
+#topo-board .topo-sticky-title{border:0;border-radius:2px;background:transparent;color:#ebe6ef;font-weight:700;font-size:14px;padding:2px 0;width:100%;height:24px;min-height:24px;text-align:left;box-shadow:none;outline:none}
+#topo-board .topo-sticky-title::placeholder,#topo-board .topo-sticky textarea::placeholder{color:#978e9d;opacity:.8}
+#topo-board .topo-sticky textarea{flex:1;min-height:20px;height:100%;padding:1px 0;font:12px/1.55 'Segoe UI',sans-serif;color:#ebe6ef;overflow:auto;resize:none}
+#topo-board .topo-sticky-resize{background:linear-gradient(135deg,transparent 55%,var(--sticky-color) 55%)}
+/* Nested sticky picker in Insert, without six competing top-level actions. */
+.topo-sticky-picker{position:relative;width:100%}
+.topo-sticky-picker>summary{display:flex;align-items:center;list-style:none;min-height:35px;padding:7px 10px;border:1px solid #465b74;border-radius:7px;cursor:pointer;font-size:12px;color:#e3edf6;background:#2c3c51}
+.topo-sticky-picker>summary::-webkit-details-marker{display:none}
+.topo-sticky-choices{padding:5px 0 3px 8px;display:flex;flex-direction:column;gap:4px}
+.topo-sticky-picker:not([open]) .topo-sticky-choices{display:none}
+.topo-add-menu .topo-sticky-choices button{height:31px;min-height:31px;padding:5px 10px;font-size:12px}
+/* Standard writing box: natural line breaks and visible auto-growth. */
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror){overflow:hidden}
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:17px;resize:none}
+
+/* Match the Notes tab: a single native sticky dropdown inside Insert. */
+.topo-add-menu #topo-sticky-kind{display:block;width:100%;min-height:36px;box-sizing:border-box;background:#2c3c51;color:#e3edf6;border:1px solid #465b74;border-radius:7px;padding:7px 9px;font:inherit;cursor:pointer}
+/* A topology writing box should only break at explicit line breaks. */
+#topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{white-space:pre!important;overflow-wrap:normal!important;word-break:normal!important;overflow-x:auto!important;overflow-y:hidden!important;line-height:17px!important}
