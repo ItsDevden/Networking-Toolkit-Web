@@ -7,6 +7,8 @@ const config=window.DEVDEN_GROUP_CONFIG||{};
 const ready=Boolean(/^https:\/\//.test(config.url||'')&&typeof config.anonKey==='string'&&config.anonKey.length>20);
 const identityKey='devden-classroom-member-id-v1';let memberId=localStorage.getItem(identityKey);if(!memberId){memberId=crypto.randomUUID();localStorage.setItem(identityKey,memberId)}
 const memberKey='devden-group-memberships-v1',soloKey='devden-group-solo-backup-v1',activeKey='devden-group-was-active-v1';
+// Faster updates, with one in-flight sync at a time (guarded by `busy`).
+const GROUP_SYNC_INTERVAL_MS=950;
 let groups=[],activeGroup=null,poll=null,busy=false,dirty=false,lastSaved='',connecting=false,failures=0;
 let applyingRemote=false;let lastLocalActivity=0,conflictDraft=null,remoteConflict=false,baseDocument=null,heldLocks=new Map(),remoteLocks=[],collaboratorPalette=[],selectedCode=null,notice=null,visibleCodes=new Set(),rosterCache={},rosterErrors={},rosterPending=new Set(),lastRosterFetch={};
 try{groups=JSON.parse(localStorage.getItem(memberKey)||'[]');if(!Array.isArray(groups))groups=[];}catch{groups=[]}
@@ -52,6 +54,8 @@ function updateVisualLocks(){
 }
 async function takeover(ref){if(!activeGroup)return;const key=lockKey(ref.kind,ref.id),owner=lockOwner(key);if(!owner)return;const person=(rosterCache[activeGroup.code]||[]).find(x=>x.id===owner);if(!confirm((person?.name||'Another member')+' is editing this item. Overwrite and take control?'))return;const ok=await lease(key,false,-1,true);if(ok){remoteLocks=remoteLocks.filter(x=>x.key!==key);updateVisualLocks()}else alert('Unable to take control. Try again.')}
 async function refreshLocks(){if(!activeGroup)return;const g=activeGroup;try{const list=await rpc('devden_list_locks',{p_code:g.code,p_member_id:memberId});if(list?.removed){removed(g);return}if(Array.isArray(list)){const changed=JSON.stringify(remoteLocks)!==JSON.stringify(list);remoteLocks=list;const owned=new Set(list.filter(l=>l.member===memberId).map(l=>l.key));for(const key of heldLocks.keys())if(!owned.has(key))heldLocks.delete(key);if(changed)updateVisualLocks()}}catch(e){console.warn('Presence temporarily unavailable',e)}}
+let lastLockRefresh=0;
+const LOCK_REFRESH_INTERVAL_MS=2000;
 let selectionTimer=null;
 window.addEventListener('devden-topo-selection',()=>{if(!online()||active!=='topology')return;
  const selected=topoSelection?.find(s=>s.kind!=='link');if(!selected){releaseLocks();return}
@@ -167,7 +171,7 @@ function backupSolo(){if(localStorage.getItem(soloKey))return;localStorage.setIt
 function restoreSolo(){const raw=localStorage.getItem(soloKey);if(!raw)return;try{restoreProject(JSON.parse(raw));localStorage.removeItem(soloKey);navigate(active)}catch(e){alert('Could not restore Solo workspace: '+e.message)}}
 function disconnect(){releaseLocks();remoteLocks=[];baseDocument=null;conflictDraft=null;if(poll)clearInterval(poll);poll=null;activeGroup=null;dirty=false;connecting=false;failures=0;remoteConflict=false;localStorage.removeItem(activeKey);restoreSolo();render();emitGroupStatus()}
 async function connect(group,existing){if(connecting)return;if(activeGroup?.code===group.code&&!failures&&!remoteConflict){open(false);return}if(activeGroup?.code===group.code){if(remoteConflict&&!confirm('Your latest group edits have not synced. Discard those local changes and reload the shared project?'))return;disconnect()}connecting=true;try{
- if(activeGroup)disconnect();const remote=existing||await rpc('devden_register_member',{p_code:group.code,p_member_id:memberId,p_nickname:group.nickname});if(!remote||!remote.document)throw Error('Group not found.');backupSolo();activeGroup={...group,revision:remote.revision};dirty=false;failures=0;remoteConflict=false;notice=null;conflictDraft=null;baseDocument=structuredClone(remote.document);restoreProject(remote.document);navigate(active);lastSaved=JSON.stringify(current());localStorage.setItem(activeKey,group.code);selectedCode=group.code;render();open(false);poll=setInterval(sync,1800);emitGroupStatus();refreshRoster(group.code)
+ if(activeGroup)disconnect();const remote=existing||await rpc('devden_register_member',{p_code:group.code,p_member_id:memberId,p_nickname:group.nickname});if(!remote||!remote.document)throw Error('Group not found.');backupSolo();activeGroup={...group,revision:remote.revision};dirty=false;failures=0;remoteConflict=false;notice=null;conflictDraft=null;baseDocument=structuredClone(remote.document);restoreProject(remote.document);navigate(active);lastSaved=JSON.stringify(current());localStorage.setItem(activeKey,group.code);selectedCode=group.code;render();open(false);poll=setInterval(sync,GROUP_SYNC_INTERVAL_MS);emitGroupStatus();refreshRoster(group.code)
  }catch(e){alert('Unable to connect: '+e.message)}finally{connecting=false}}
 window.addEventListener('devden-state-updated',()=>{if(activeGroup&&!applyingRemote){dirty=true;lastLocalActivity=Date.now();emitGroupStatus()}});
 function removed(group){const name=group.name;forgetMissing(group.code);notice='Removed from '+name;render()}
@@ -238,7 +242,10 @@ if(!activeGroup||busy)return;busy=true;const group=activeGroup;const previousSta
  }else{lastSaved=JSON.stringify(local);remoteConflict=false;if(!conflictDraft)notice=null}
  failures=0;if(previousStatus!==failures+'|'+remoteConflict+'|'+String(notice))render();
  if(!panel.hidden&&Date.now()-(lastRosterFetch[group.code]||0)>=8000)refreshRoster(group.code);
- await refreshLocks();
+ if(Date.now()-lastLockRefresh>=LOCK_REFRESH_INTERVAL_MS){
+  lastLockRefresh=Date.now();
+  await refreshLocks();
+ }
  for(const [key,last] of heldLocks)if(Date.now()-last>4000)await lease(key,false);
  }catch(e){failures++;console.warn('Group sync',e);render()}finally{busy=false;emitGroupStatus()}}
 if(localStorage.getItem(activeKey)){localStorage.removeItem(activeKey);restoreSolo()}
