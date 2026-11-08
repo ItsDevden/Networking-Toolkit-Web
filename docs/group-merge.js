@@ -25,6 +25,10 @@
   if(same(ours,theirs))return clone(ours);
   if(same(ours,base))return clone(theirs);
   if(same(theirs,base))return clone(ours);
+  // Position-only collisions are intentionally cooperative. The server's
+  // atomic move RPC serializes completed drags; its committed x/y wins.
+  // Other fields keep ordinary three-way conflict protection.
+  if(/^\/topology\/(devices|zones|notes)\/[^/]+\/(x|y)$/.test(path))return clone(theirs);
   if(path.endsWith('/html')){const joined=mergeNoteHtml(base,ours,theirs);if(joined!==null)return joined;}
   const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
   if(plain(ours)&&plain(theirs)&&plain(base)){

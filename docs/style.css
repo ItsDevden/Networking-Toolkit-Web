@@ -38,7 +38,7 @@
 .topo-viewport{height:clamp(440px,65vh,850px);border:1px solid #54687f;border-radius:9px;overflow:auto;background:#142130;position:relative}
 .topo-board{position:relative;width:1400px;height:850px;background-color:#142130;background-image:radial-gradient(#31445c 1px,transparent 1px);background-size:25px 25px;overflow:hidden;touch-action:none;user-select:none}
 .topo-links{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visible}
-.topo-labels{position:absolute;inset:0;z-index:6;pointer-events:none}
+.topo-labels{position:absolute;inset:0;z-index:4;pointer-events:none}
 .topo-link-wrap{position:absolute;pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:center}
 .topo-wire-input{min-width:46px;height:28px;text-align:center;background:#172638;color:#e2eef8;border:1px solid #4c6c89;border-radius:5px;padding:3px 7px;font-family:Consolas,'Segoe UI',monospace;font-size:11px;box-shadow:0 0 0 4px #172638;outline-offset:3px;user-select:text}
 .topo-link-wrap.selected .topo-wire-input{border-color:#9bd8ff}
@@ -52,7 +52,7 @@
 .topo-node-name{font-size:14px;font-weight:700;color:#fff}.topo-node-extra{color:#afc6d9;font-size:10px}
 .topo-node-name:focus,.topo-node-extra:focus{outline:none;background:#345573}
 .topo-node-extra::placeholder{color:#8396ab}.topo-device-kind{font-size:10px;color:#a9c3d8}
-.topo-zone{position:absolute;z-index:1;border:2px dashed var(--zone-color);background:color-mix(in srgb,var(--zone-color) 13%,transparent);border-radius:10px;min-width:200px;min-height:140px;pointer-events:none}
+.topo-zone{position:absolute;z-index:3;border:2px dashed var(--zone-color);background:color-mix(in srgb,var(--zone-color) 13%,transparent);border-radius:10px;min-width:200px;min-height:140px;pointer-events:none}
 .topo-zone.selected{border-style:solid;box-shadow:inset 0 0 0 1px var(--zone-color)}
 .topo-zone-handle{position:absolute;left:0;right:0;top:0;height:38px;pointer-events:auto;cursor:grab}
 .topo-zone-name,.topo-zone-network{position:absolute;z-index:2;pointer-events:auto;background:#16283a;border:1px solid color-mix(in srgb,var(--zone-color) 70%,#fff 10%);color:#e5f3fc;border-radius:5px;text-align:center;padding:6px;font-size:12px;user-select:text}
@@ -640,7 +640,7 @@ body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo
 /* Compact three-row drawing popover under the header pencil. */
 #devden-sketch-tools:not([hidden]){
   display:flex!important;flex-direction:column!important;align-items:stretch!important;
-  width:310px!important;max-width:calc(100vw - 16px)!important;
+  width:var(--devden-sketch-panel-width,310px)!important;max-width:var(--devden-sketch-panel-width,calc(100vw - 16px))!important;
   box-sizing:border-box!important;white-space:normal!important;
   gap:12px!important;padding:12px 14px!important;border-radius:16px!important;
 }
@@ -699,3 +699,204 @@ body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo
 .topo-add-menu #topo-sticky-kind{display:block;width:100%;min-height:36px;box-sizing:border-box;background:#2c3c51;color:#e3edf6;border:1px solid #465b74;border-radius:7px;padding:7px 9px;font:inherit;cursor:pointer}
 /* A topology writing box should only break at explicit line breaks. */
 #topo-board .topo-note:not(.topo-sticky):not(.topo-chart-mirror) textarea{white-space:pre!important;overflow-wrap:normal!important;word-break:normal!important;overflow-x:auto!important;overflow-y:hidden!important;line-height:17px!important}
+
+/* Collaborative ownership: unavailable objects must look unavailable, not broken. */
+.topo-node.devden-remote-lock,.topo-note.devden-remote-lock,.topo-zone.devden-remote-lock{cursor:not-allowed!important}
+.topo-node.devden-remote-lock input,.topo-note.devden-remote-lock textarea{cursor:not-allowed!important}
+
+/* A selection is visible presence, not an exclusive edit lock. */
+#topo-board .devden-remote-selected{outline:2px dashed var(--collab-color,#ad89c9)!important;outline-offset:3px}
+#topo-board .devden-remote-selected .devden-collab-tag{opacity:.9}
+#topo-board .devden-remote-lock{cursor:default!important}
+
+/* Topology stacking: connections < LAN/port captions < devices. */
+#topo-board .topo-links{z-index:2}
+#topo-board .topo-zone{z-index:3}
+#topo-board .topo-labels{z-index:4}
+#topo-board .topo-node{z-index:5}
+#topo-board .topo-labels .topo-link-wrap{z-index:auto}
+#topo-board .topo-node input.topo-readonly,
+#topo-board .topo-zone input.topo-readonly{caret-color:transparent;user-select:none}
+
+/* Minimal wire-routing endpoint: normal pointer/selection/drag behavior, no hardware box. */
+#topo-board .topo-node.topo-route-node{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;padding:0!important;border:0!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;outline:none;display:flex;align-items:center;justify-content:center;z-index:18}
+#topo-board .topo-route-node .topo-route-dot{display:block;width:10px;height:10px;border-radius:50%;background:#cad6e6;box-shadow:0 0 0 1px #203042;pointer-events:none}
+#topo-board .topo-route-node.selected .topo-route-dot,#topo-board .topo-route-node:focus-visible .topo-route-dot{box-shadow:0 0 0 3px #e1afe2,0 0 0 5px #8b4c91}
+#topo-board .topo-route-node.connecting .topo-route-dot{background:#76d1b0;box-shadow:0 0 0 4px #76d1b055}
+#topo-board .topo-route-node.locked .topo-route-dot{opacity:.65}
+
+/* Compact device category tabs; the type picker remains keyboard-friendly. */
+.topo-device-picker{gap:6px}
+.topo-device-picker #topo-device-type{width:150px;max-width:24vw}
+.topo-device-tabs{display:flex;gap:2px;padding:2px;background:#162638;border:1px solid #48556b;border-radius:7px}
+.topo-device-tabs button{height:27px;padding:3px 8px;font-size:11px;border:0;border-radius:5px;background:transparent;color:#aebccd}
+.topo-device-tabs button.active{background:#385875;color:#fff}
+.topo-device-tabs button:focus-visible{outline:2px solid #c5a2d4;outline-offset:2px}
+@media(max-width:850px){.topo-device-picker{flex-wrap:wrap}.topo-device-picker #topo-device-type{max-width:150px}.topo-device-tabs button{padding:3px 6px}}
+
+/* Tool feedback: distinct cursor and unmistakable state without modal hints. */
+#topo-viewport.topo-wiring-active,
+#topo-viewport.topo-wiring-active #topo-board,
+#topo-viewport.topo-wiring-active #topo-board .topo-node,
+#topo-viewport.topo-wiring-active #topo-board .topo-route-node{cursor:crosshair!important}
+#topo-mode-wire.active{background:#553c69!important;border-color:#c69bdc!important;box-shadow:inset 0 0 0 1px #c69bdc55!important;color:#f7e5ff!important}
+#devden-sketch-tools .devden-sketch-modes{gap:5px}
+#devden-sketch-tools .devden-sketch-modes button{flex:1;white-space:nowrap}
+#devden-sketch-tools .devden-sketch-modes button.active{background:#65456f!important;border-color:#d8a6e4!important;color:white!important}
+
+/* Keep Draw controls within the sidebar rather than covering Topology. */
+#devden-sketch-tools:not([hidden]){min-width:0!important;max-width:none!important;overflow-x:hidden;overflow-y:auto;max-height:calc(100vh - 90px);padding:10px!important;gap:10px!important}
+#devden-sketch-tools .devden-sketch-palette{flex-wrap:wrap;justify-content:space-between}
+#devden-sketch-tools .devden-sketch-palette .devden-color-swatch{flex:0 0 28px;width:28px;height:28px;min-width:28px;min-height:28px}
+#devden-sketch-tools.devden-sketch-narrow .devden-sketch-actions,#devden-sketch-tools.devden-sketch-narrow .devden-sketch-modes{flex-wrap:wrap}
+#devden-sketch-tools.devden-sketch-narrow .devden-sketch-actions strong{flex:1 0 100%}
+#devden-sketch-tools.devden-sketch-narrow .devden-sketch-palette{justify-content:center;gap:7px}
+#devden-sketch-tools.devden-sketch-narrow .devden-pen-size{flex-wrap:wrap}
+#devden-sketch-tools.devden-sketch-narrow .devden-pen-size input{flex:1 1 100%;order:3}
+#devden-sketch-tools.devden-sketch-narrow .devden-sketch-modes button{white-space:normal;min-width:0}
+
+/* Sidebar Draw: sidebar measurements win over older fixed-width popover rules. */
+#devden-sketch-tools:not([hidden]){width:var(--devden-sketch-panel-width,310px)!important;max-width:var(--devden-sketch-panel-width,calc(100vw - 16px))!important;min-width:0!important;box-sizing:border-box!important}
+#devden-sketch-tools .devden-sketch-palette{justify-content:flex-start;gap:7px;flex-wrap:wrap}
+#devden-sketch-tools .devden-sketch-modes button{min-width:0;white-space:normal}
+
+
+/* Consolidated topology toolbar: one source of truth, no competing overrides. */
+body:has(#topo-board) .topo-toolbar{display:flex;flex-flow:row wrap;align-items:center;align-content:flex-start;justify-content:flex-start;gap:5px;margin:0 0 8px;padding:5px;width:100%;max-height:none;min-width:0;overflow:visible;border:1px solid #3d4651;border-radius:10px;background:#242831;box-sizing:border-box}
+body:has(#topo-board) .topo-toolbar>.topo-toolbar-group{display:inline-flex;align-items:center;flex:0 0 auto;flex-wrap:nowrap;gap:4px;max-width:100%;padding:3px;border:1px solid #465262;border-radius:7px;background:#2a3038;white-space:nowrap;box-sizing:border-box;min-width:0;margin:0}
+body:has(#topo-board) .topo-toolbar-group[data-section="workspace"]{background:#293638;border-color:#435657}
+body:has(#topo-board) .topo-toolbar-group[data-section="devices"]{background:#293443;border-color:#45536b}
+body:has(#topo-board) .topo-toolbar-group[data-section="insert"]{background:#2b3c34;border-color:#4b6a57}
+body:has(#topo-board) .topo-toolbar-group[data-section="edit"]{background:#342d3b;border-color:#5f4c68}
+body:has(#topo-board) .topo-toolbar-group[data-section="view"]{background:#34332f;border-color:#605947}
+body:has(#topo-board) .topo-toolbar-group[data-section="export"]{background:#353329;border-color:#685f43}
+body:has(#topo-board) .topo-toolbar-section-label{display:none}
+body:has(#topo-board) .topo-toolbar button,body:has(#topo-board) .topo-toolbar summary{display:inline-flex;justify-content:center;align-items:center;gap:4px;box-sizing:border-box;min-height:33px;height:33px;padding:5px 8px;border:1px solid #485463;border-radius:6px;background:#303744;color:#dee6ef;font-size:12px;line-height:1.2;white-space:nowrap;box-shadow:none;cursor:pointer}
+body:has(#topo-board) .topo-toolbar button:disabled{opacity:.55;cursor:default}
+body:has(#topo-board) .topo-toolbar button:hover:not(:disabled),body:has(#topo-board) .topo-toolbar summary:hover{background:#3b4656;border-color:#7d8fa5}
+body:has(#topo-board) .topo-toolbar button.selected,body:has(#topo-board) .topo-toolbar button.active{background:#42637a;color:#fff;border-color:#94b8ce}
+body:has(#topo-board) .topo-toolbar #topo-mode-wire.active{background:#63466f;border-color:#ad83c0;color:#fff}
+body:has(#topo-board) .topo-toolbar .topo-view-switch{display:inline-flex;flex:0 0 auto;gap:2px;padding:2px;border:1px solid #536575;border-radius:7px;background:#1e2b39}
+body:has(#topo-board) .topo-toolbar .topo-view-switch button{min-width:72px;height:29px;min-height:29px;padding:4px 7px;border-color:transparent}
+body:has(#topo-board) .topo-toolbar .topo-primary-modes{display:inline-flex;gap:4px;flex:0 0 auto;flex-wrap:nowrap}
+body:has(#topo-board) .topo-toolbar #topo-mode-wire{width:111px;min-width:111px;max-width:111px;flex:0 0 111px}
+body:has(#topo-board) .topo-toolbar .topo-cable-select{width:104px;min-width:104px;max-width:104px;flex:0 0 104px;height:33px;min-height:33px;padding:5px 7px;border:1px solid #607086;border-radius:6px;background:#263343;color:#e2edf6;font-size:12px;cursor:pointer}
+body:has(#topo-board) .topo-toolbar .topo-cable-select:disabled{opacity:.6;cursor:default}
+body:has(#topo-board) .topo-toolbar .topo-device-picker{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;flex-wrap:nowrap}
+body:has(#topo-board) .topo-toolbar .topo-device-tabs{display:inline-flex;gap:2px;padding:2px;border:1px solid #526477;border-radius:6px;background:#1e2b39}
+body:has(#topo-board) .topo-toolbar .topo-device-tabs button{height:28px;min-height:28px;padding:4px 6px}
+body:has(#topo-board) .topo-toolbar .topo-devices-menu>summary{min-width:89px;justify-content:space-between}
+body:has(#topo-board) .topo-toolbar .topo-devices-menu .topo-menu-panel{left:0;min-width:170px;max-height:min(390px,65vh);overflow-y:auto;z-index:1000}
+body:has(#topo-board) .topo-toolbar .topo-inline-select{height:33px;min-height:33px;border-radius:6px;padding:5px 7px;border:1px solid #4d6657;background:#303e37;color:#e4efe8;font-size:12px;max-width:138px}
+body:has(#topo-board) .topo-toolbar-group[data-section="insert"] #topo-add-zone{background:#344b3e;border-color:#587d64;color:#eaf6eb}
+body:has(#topo-board) .topo-toolbar-group[data-section="insert"] #topo-add-note,body:has(#topo-board) .topo-toolbar-group[data-section="insert"] #topo-insert-chart{background:#303e37;border-color:#4d6657;color:#e4efe8}
+body:has(#topo-board) .topo-toolbar .topo-search-box{display:inline-flex;align-items:center;gap:4px;min-width:0}
+body:has(#topo-board) .topo-toolbar .topo-search-box input{width:130px;min-width:110px;max-width:130px;height:33px;min-height:33px;padding:5px 7px;border-radius:6px;font-size:12px}
+body:has(#topo-board) .topo-toolbar button.topo-icon-action{flex:0 0 34px;width:34px;min-width:34px;max-width:34px;height:33px;min-height:33px;padding:4px;overflow:hidden;white-space:nowrap;font-size:18px;font-family:Arial,sans-serif}
+body:has(#topo-board) .topo-toolbar .topo-help-standalone{display:inline-flex;align-items:center;flex:0 0 auto}
+body:has(#topo-board) .topo-toolbar .topo-help-standalone>summary{min-width:33px}
+body:has(#topo-board) .topo-toolbar .topo-help-standalone .topo-menu-panel{right:0;left:auto}
+body:has(#topo-board) .topo-toolbar input:focus-visible,body:has(#topo-board) .topo-toolbar select:focus-visible,body:has(#topo-board) .topo-toolbar button:focus-visible,body:has(#topo-board) .topo-toolbar summary:focus-visible{outline:2px solid #c2a3dc;outline-offset:2px}
+body:has(#topo-board) .topo-toolbar #topo-add-zone,body:has(#topo-board) .topo-toolbar #topo-fullscreen{margin:0}
+@media(max-width:730px){body:has(#topo-board) .topo-toolbar>.topo-toolbar-group{flex-wrap:wrap;white-space:normal}}
+
+/* Topology canvas owns this stable view switch. The switch is INSIDE the viewport
+   border, so it never creates an extra row or a gap above the drawing surface. */
+body:has(#topo-board) .topo-toolbar{margin-bottom:4px}
+body:has(#topo-board) .topo-canvas-shell{
+ position:relative;display:flex;flex:1 1 0;min-width:0;min-height:0;
+ padding:0;box-sizing:border-box;
+}
+body:has(#topo-board) .topo-canvas-shell>.topo-viewport{
+ flex:1 1 0;min-width:0;min-height:0!important;height:auto;
+}
+body:has(#topo-board) .topo-canvas-view-switch{
+ position:absolute;top:10px;left:12px;z-index:35;
+ display:inline-flex;align-items:center;gap:3px;padding:3px;
+ background:#1b2a37;border:1px solid #5c777e;border-radius:10px;
+ box-shadow:0 5px 14px rgba(0,0,0,.32);
+}
+body:has(#topo-board) .topo-canvas-view-switch button{
+ min-height:31px;height:31px;padding:5px 13px;border:0;
+ border-radius:7px;background:transparent;color:#bdd0db;
+ font:inherit;font-size:12px;font-weight:650;white-space:nowrap;cursor:pointer;
+ box-shadow:none;position:relative;
+}
+body:has(#topo-board) .topo-canvas-view-switch button.selected{
+ background:#42645f;color:#fff;box-shadow:inset 0 0 0 1px #8cbaa9;
+}
+body:has(#topo-board) .topo-canvas-view-switch button:hover:not(.selected){background:#2b4050;color:#fff}
+body:has(#topo-board) .topo-canvas-view-switch button:focus-visible{outline:2px solid #c9a7d8;outline-offset:2px}
+@media(max-width:500px){body:has(#topo-board) .topo-canvas-view-switch{top:8px;left:8px}body:has(#topo-board) .topo-canvas-view-switch button{padding:4px 9px;font-size:11px}}
+
+/* Concept C: low-noise unified toolbar; existing handlers and IDs remain unchanged. */
+body:has(#topo-board) .topo-toolbar.topo-concept-c{display:flex;flex-flow:row wrap;align-items:center;align-content:flex-start;justify-content:flex-start;gap:4px;row-gap:5px;padding:5px;margin:0 0 4px;border:1px solid #39424d;border-radius:10px;background:#232730;overflow:visible;min-height:0}
+body:has(#topo-board) .topo-concept-c>.topo-toolbar-group{padding:2px;gap:3px;border-color:transparent;border-radius:7px;background:#2b323b;flex:0 0 auto;box-shadow:none;min-height:0}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="workspace"]{background:#28383a}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="devices"]{background:#2a3748}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="insert"]{background:#2b3d34}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="edit"]{background:#362f3e}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="view"]{background:#2f3944}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="export"]{background:#3d392e}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group.topo-context-selected{box-shadow:inset 0 -1px 0 #b391c0}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group.topo-context-lan{box-shadow:inset 0 -1px 0 #83b49a}
+body:has(#topo-board) .topo-concept-c button,body:has(#topo-board) .topo-concept-c summary{height:31px;min-height:31px;padding:4px 7px;border-color:transparent;background:transparent;color:#d8e0e9}
+body:has(#topo-board) .topo-concept-c button:hover:not(:disabled),body:has(#topo-board) .topo-concept-c summary:hover{background:#3b4855;border-color:#506478}
+body:has(#topo-board) .topo-concept-c button:focus-visible,body:has(#topo-board) .topo-concept-c summary:focus-visible{outline:2px solid #c6a1d9;outline-offset:1px}
+body:has(#topo-board) .topo-concept-c #topo-mode-wire{width:105px;min-width:105px;max-width:105px;flex:0 0 105px}
+body:has(#topo-board) .topo-concept-c .topo-cable-select{height:31px;min-height:31px;width:98px;min-width:98px;max-width:98px;flex-basis:98px}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu>summary{min-width:90px}
+body:has(#topo-board) .topo-concept-c .topo-device-tabs{display:flex;align-items:center;gap:3px;margin:4px 4px 7px;padding:3px}
+body:has(#topo-board) .topo-concept-c .topo-device-tabs button{flex:1;height:31px;min-height:31px;background:#25364a}
+body:has(#topo-board) .topo-concept-c .topo-device-tabs button.active{background:#416587;color:#fff}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel{min-width:176px;max-height:65vh;overflow-y:auto}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button{display:flex;width:100%;justify-content:flex-start;padding:7px 9px;height:34px;background:transparent}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button:hover{background:#35495c}
+body:has(#topo-board) .topo-concept-c .topo-sticky-picker{width:89px!important;min-width:89px!important;max-width:89px!important;height:31px!important;min-height:31px!important;padding:4px 5px!important;flex:0 0 89px!important}
+body:has(#topo-board) .topo-concept-c .topo-icon-action{width:31px;min-width:31px;max-width:31px;flex-basis:31px;height:31px;min-height:31px;font-size:17px;padding:3px}
+body:has(#topo-board) .topo-concept-c .topo-search-box{gap:3px}
+body:has(#topo-board) .topo-concept-c .topo-search-box input,body:has(#topo-board) .topo-concept-c .topo-search-box #topo-search-go{display:none}
+body:has(#topo-board) .topo-concept-c .topo-search-box.topo-search-open input{display:block;height:31px;min-height:31px;width:130px;min-width:110px}
+body:has(#topo-board) .topo-concept-c .topo-search-box.topo-search-open #topo-search-go{display:inline-flex}
+body:has(#topo-board) .topo-concept-c .topo-search-box #topo-search-toggle{display:inline-flex}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="export"]{margin-left:0}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="insert"] #topo-add-note,body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="insert"] #topo-insert-chart{background:transparent;border-color:transparent}
+body:has(#topo-board) .topo-concept-c .topo-toolbar-group[data-section="insert"] #topo-add-zone{background:#385746;border-color:#527e65}
+body:has(#topo-board) .topo-concept-c #topo-duplicate-lan:disabled{opacity:.36}
+@media(max-width:740px){body:has(#topo-board) .topo-toolbar.topo-concept-c{gap:4px}body:has(#topo-board) .topo-concept-c>.topo-toolbar-group{max-width:100%;flex-wrap:wrap}}
+
+/* Compact, persistent Devices menu: menu rows do not inherit main toolbar sizing. */
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel{
+ width:194px;min-width:194px;max-width:min(194px,calc(100vw - 24px));
+ padding:7px;gap:2px;max-height:min(440px,75vh);overflow-y:auto;
+ box-sizing:border-box;scrollbar-width:thin;
+}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>.topo-device-tabs{
+ display:flex;flex-direction:row;gap:3px;margin:0 0 5px;padding:2px;
+ width:100%;flex:0 0 auto;box-sizing:border-box;
+}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>.topo-device-tabs>button{
+ flex:1 1 0;width:auto;min-width:0;height:29px;min-height:29px;
+ padding:3px 5px;margin:0;justify-content:center;
+}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button{
+ display:flex;align-items:center;justify-content:flex-start;
+ box-sizing:border-box;flex:0 0 30px;width:100%;min-height:30px;height:30px;
+ margin:0;padding:4px 9px;border:1px solid transparent;border-radius:5px;
+ background:transparent;color:#dbe6f1;font-size:12px;font-weight:400;
+ line-height:1.15;text-align:left;box-shadow:none;
+}
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button:hover,
+body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button:focus-visible{
+ background:#354b60;border-color:#58718a;color:#fff;
+}
+/* Wires behind all, routing dots below captions, normal devices on top. */
+#topo-board .topo-node.topo-route-node{z-index:3!important}
+#topo-board .topo-labels{z-index:4}
+#topo-board .topo-node:not(.topo-route-node){z-index:5}
+
+/* Free-form shared dragging: ownership markers remain, but moving is permitted.
+   Text/input fields still show the ordinary protected edit state. */
+body:has(#topo-board) #topo-board .topo-node.devden-remote-lock,
+body:has(#topo-board) #topo-board .topo-zone.devden-remote-lock,
+body:has(#topo-board) #topo-board .topo-note.devden-remote-lock{cursor:grab!important}
