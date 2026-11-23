@@ -14,7 +14,7 @@ const GROUP_POLL_IDLE_MS=5000;
 const GROUP_POLL_SOLO_MS=8000;
 const GROUP_POLL_HIDDEN_MS=20000;
 const GROUP_POLL_FAILURE_MS=2500;
-let groups=[],activeGroup=null,poll=null,busy=false,dirty=false,lastSaved='',connecting=false,failures=0;
+let groups=[],activeGroup=null,poll=null,busy=false,dirty=false,lastSaved='',connecting=false,failures=0,transferPending=false;
 let syncWakePending=false;
 // Supabase Realtime Broadcast transports *hints*, never group documents. The
 // member-checked RPC remains the only source of project data. Direct Postgres
@@ -254,7 +254,7 @@ function updateVisualLocks(){
  const board=document.getElementById('topo-board');if(board){board.querySelectorAll('.devden-collab-tag').forEach(e=>e.remove());board.querySelectorAll('[data-device],[data-zone],[data-note],[data-link]').forEach(el=>{
  const kind=el.dataset.device?'device':el.dataset.zone?'zone':el.dataset.note?'note':'link',id=el.dataset.device||el.dataset.zone||el.dataset.note||el.dataset.link;
  if(!id||el.classList.contains('topo-wire-hit'))return;
- const key=lockKey(kind,id),owner=lockOwner(key),ours=ownLock(key);const viewers=remoteSelections().filter(x=>x.kind===kind&&x.id===id);const viewing=!owner&&viewers.length>0;el.classList.toggle('devden-remote-lock',!!owner);el.classList.toggle('devden-own-lock',!owner&&ours);el.classList.toggle('devden-remote-selected',viewing);
+ const key=lockKey(kind,id),owner=lockOwner(key),ours=ownLock(key);const viewers=remoteSelections().filter(x=>x.kind===kind&&x.id===id);const viewing=!owner&&viewers.length>0;const locallySelected=el.classList.contains('selected');el.classList.toggle('devden-remote-lock',!!owner);el.classList.toggle('devden-own-lock',!owner&&ours&&!locallySelected);el.classList.toggle('devden-remote-selected',viewing&&!locallySelected);el.classList.toggle('devden-collab-active',!!owner||viewing||ours);
  el.style.setProperty('--collab-color',owner?memberColor(owner):viewing?memberColor(viewers[0].member):memberColor(memberId));
  if(owner||viewing){const tag=document.createElement('span');tag.className='devden-collab-tag';const observer=owner||viewers[0]?.member;const person=(rosterCache[activeGroup?.code]||[]).find(m=>m.id===observer);tag.textContent=(person?.name||'?').slice(0,1).toUpperCase();tag.title=(person?.name||'Another member')+(owner?' is editing':' has selected this');el.append(tag)}
  })}
@@ -413,31 +413,50 @@ async function shareSoloProject(templateId){
  if(!activeGroup||failures)throw Error('Connect to a healthy group first.');
  const selected=templateLibrary().find(x=>x.id===templateId&&x.version===2&&x.state&&x.topology);
  if(!selected)throw Error('Choose a complete Solo project.');
- if(busy||connecting)throw Error('Synchronization in progress. Try again.');
+ if(transferPending||connecting)throw Error('Another group transfer is already running.');
  if(active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag)throw Error('Finish moving the selected item first.');
- busy=true;
+ // Reserve the transfer BEFORE waiting on an in-flight poll. Otherwise the
+ // 950ms poll races the upload button and rejects clicks seemingly at random.
+ transferPending=true;
+ clearTimeout(poll);poll=null;
  const group=activeGroup;
  try{
+  const deadline=Date.now()+16000;
+  while(busy&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,60));
+  if(busy)throw Error('Group sync has not finished. Check your connection and try again.');
+  if(activeGroup!==group)throw Error('The active group changed.');
+  busy=true;
   if(active==='notes')notesCommit();
-  const local=current();
-  if(dirty||JSON.stringify(local)!==lastSaved)throw Error('The group has unsynced changes. Wait for synchronization before uploading.');
-  const remote=await rpc('devden_member_read',{p_code:group.code,p_member_id:memberId});
-  if(activeGroup!==group)throw Error('The active group changed.');
-  if(!remote||remote.removed){removed(group);throw Error('Group no longer exists.');}
-  if(remote.revision!==group.revision)throw Error('The group changed. Let it sync before uploading.');
+  // An explicit, confirmed replacement is allowed even with unsynced group
+  // edits. Preserve a recovery snapshot before replacing them.
+  if(dirty||JSON.stringify(current())!==lastSaved)saveRecovery(group);
   const snapshot={version:2,state:structuredClone(selected.state),topology:structuredClone(selected.topology)};
-  const result=await rpc('devden_member_update',{p_code:group.code,p_member_id:memberId,p_revision:group.revision,p_document:snapshot});
-  if(activeGroup!==group)throw Error('The active group changed.');
-  if(!result?.ok)throw Error('The group changed. Let it sync before uploading.');
-  group.revision=result.revision;realtimePublish(result.revision);
-  baseDocument=structuredClone(snapshot);
-  restoreProject(snapshot);
-  navigate(active);
-  lastSaved=JSON.stringify(current());
-  dirty=false;failures=0;remoteConflict=false;conflictDraft=null;
-  notice=null;
-  render();
- }finally{busy=false}
+  // Fetch the latest revision instead of rejecting a valid upload because a
+  // collaborator happened to save between two ordinary background polls.
+  let uploaded=false;
+  for(let attempt=0;attempt<3;attempt++){
+   const remote=await rpc('devden_member_read',{p_code:group.code,p_member_id:memberId});
+   if(activeGroup!==group)throw Error('The active group changed.');
+   if(!remote||remote.removed){removed(group);throw Error('Group is no longer available.');}
+   const result=await rpc('devden_member_update',{p_code:group.code,p_member_id:memberId,p_revision:remote.revision,p_document:snapshot});
+   if(activeGroup!==group)throw Error('The active group changed.');
+   if(result?.removed){removed(group);throw Error('You no longer have access to this group.');}
+   if(result?.locked)throw Error('A group member is editing an item ('+(result.key||'locked object')+'). Ask them to finish and try again.');
+   if(result?.ok){
+    group.revision=result.revision;realtimePublish(result.revision);
+    baseDocument=structuredClone(snapshot);
+    applyingRemote=true;
+    try{restoreProject(snapshot);navigate(active)}finally{applyingRemote=false}
+    lastSaved=JSON.stringify(current());dirty=false;failures=0;remoteConflict=false;conflictDraft=null;notice=null;
+    render();emitGroupStatus();uploaded=true;break;
+   }
+   if(attempt===2)throw Error('Group changed repeatedly during upload. Try again when other members finish editing.');
+  }
+  if(!uploaded)throw Error('The group could not be updated.');
+ }finally{
+  busy=false;transferPending=false;
+  if(activeGroup===group){emitGroupStatus();schedulePoll(1500)}
+ }
 }
 window.DevDenGroupTransfers={connected:()=>Boolean(activeGroup&&!failures),name:()=>activeGroup?.name||'',saveFromGroup:saveGroupToSolo,uploadToGroup:shareSoloProject};
 // Save locally recoverable project snapshots in the same backup format as the
@@ -475,7 +494,7 @@ window.addEventListener('devden-state-updated',()=>{if(activeGroup&&!applyingRem
 function removed(group){const name=group.name;forgetMissing(group.code);notice='Removed from '+name;render()}
 async function sync(){
  if(movementPending||active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag)return;
-if(!activeGroup||busy||movementPending)return;busy=true;const group=activeGroup;const previousStatus=failures+'|'+remoteConflict+'|'+String(notice);try{
+if(!activeGroup||busy||transferPending||movementPending)return;busy=true;const group=activeGroup;const previousStatus=failures+'|'+remoteConflict+'|'+String(notice);try{
  if(movementPending||active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag)return;
  if(window.DevDenSketch?.drawing?.())return;
  if(active==='notes'&&document.querySelector('.notes-ink-overlay.is-drawing'))return;

@@ -480,8 +480,8 @@ body .inventory-scroll{scrollbar-width:thin}
 #topo-board .topo-node,#topo-board .topo-note,#topo-board .topo-zone-handle,#topo-board .topo-zone-resize{touch-action:none}
 #topo-delete{border-color:#a96a78!important;min-height:36px;touch-action:manipulation}
 .topo-toolbar button,.topo-toolbar summary{touch-action:manipulation;min-height:36px}
-.devden-remote-lock{outline:3px solid var(--collab-color,#ba7bdc)!important;outline-offset:3px}
-.devden-own-lock{outline:2px dashed var(--collab-color,#72bfa8)!important;outline-offset:2px}
+.devden-remote-lock{outline:2px solid var(--collab-color,#ba7bdc)!important;outline-offset:2px}
+.devden-own-lock{outline:1px dashed var(--collab-color,#72bfa8)!important;outline-offset:1px}
 .devden-collab-tag{position:absolute;right:-9px;top:-10px;z-index:20;background:var(--collab-color,#a78bfa);border-radius:50%;height:21px;min-width:21px;display:grid;place-items:center;color:#12121a;font-weight:800;font-size:11px;pointer-events:none}
 
 @media (pointer:coarse){
@@ -510,7 +510,7 @@ body:has(#topo-board) #topo-board{touch-action:pan-x pan-y}
 #topo-board,#topo-board *{touch-action:none!important}
 #topo-board .topo-node,#topo-board .topo-note{min-width:110px;min-height:90px;cursor:grab;z-index:15}
 #topo-board .topo-node input[readonly],#topo-board .topo-note textarea[readonly]{touch-action:none!important;cursor:grab}
-#topo-board .topo-node.selected{outline:3px solid #e1afe2;outline-offset:5px}
+#topo-board .topo-node.selected{outline:2px solid #e1afe2;outline-offset:2px}
 #topo-board .topo-zone{z-index:1}
 #topo-board .topo-zone-handle{min-height:38px;min-width:38px}
 #devden-pencil{position:absolute;right:8px;top:8px;z-index:30;width:38px;height:38px;border:1px solid #796988;border-radius:8px;background:#382d42;color:#f3d2ee;font-size:25px;cursor:pointer;touch-action:manipulation}
@@ -554,7 +554,7 @@ body:has(#topo-board) #topo-board .topo-node:active,body:has(#topo-board) #topo-
 body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo-board .topo-node *, #topo-board .topo-note, #topo-board .topo-note *{touch-action:none!important;-webkit-user-select:none;user-select:none;-webkit-user-drag:none;}
 #topo-board .topo-node, #topo-board .topo-note{pointer-events:auto!important;cursor:grab!important;}
 #topo-board .topo-node input[readonly], #topo-board .topo-note textarea[readonly]{pointer-events:none!important;}
-#topo-board .topo-node.selected{outline:3px solid #e1afe2!important;outline-offset:4px;}
+#topo-board .topo-node.selected{outline:2px solid #e1afe2!important;outline-offset:2px;}
 
 /* Desktop-style selection rectangle, positioned in board coordinates. */
 #topo-board .topo-marquee{position:absolute;z-index:100;pointer-events:none;border:1px solid #c9a2e4;background:rgba(179,124,223,.18);box-shadow:0 0 0 1px rgba(201,162,228,.25) inset;}
@@ -705,7 +705,7 @@ body:has(#topo-board) .topo-viewport, #topo-board, #topo-board .topo-node, #topo
 .topo-node.devden-remote-lock input,.topo-note.devden-remote-lock textarea{cursor:not-allowed!important}
 
 /* A selection is visible presence, not an exclusive edit lock. */
-#topo-board .devden-remote-selected{outline:2px dashed var(--collab-color,#ad89c9)!important;outline-offset:3px}
+#topo-board .devden-remote-selected{outline:1px dashed var(--collab-color,#ad89c9)!important;outline-offset:1px}
 #topo-board .devden-remote-selected .devden-collab-tag{opacity:.9}
 #topo-board .devden-remote-lock{cursor:default!important}
 
@@ -900,3 +900,12 @@ body:has(#topo-board) .topo-concept-c .topo-devices-menu .topo-menu-panel>button
 body:has(#topo-board) #topo-board .topo-node.devden-remote-lock,
 body:has(#topo-board) #topo-board .topo-zone.devden-remote-lock,
 body:has(#topo-board) #topo-board .topo-note.devden-remote-lock{cursor:grab!important}
+
+
+/* Selection + collaboration cleanup: avoid double outlines when the local user has the item selected. */
+#topo-board .selected.devden-own-lock,#topo-board .selected.devden-remote-selected{outline-color:#e1afe2!important;outline-width:2px!important;outline-offset:2px!important;box-shadow:none!important}
+#topo-board .topo-node.devden-remote-selected,#topo-board .topo-note.devden-remote-selected{box-shadow:0 0 0 2px color-mix(in srgb,var(--collab-color,#ad89c9) 55%,transparent)!important}
+#topo-board .topo-zone.devden-remote-selected{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--collab-color,#ad89c9) 60%,transparent)!important}
+#topo-board .devden-collab-tag{box-shadow:0 2px 8px rgba(0,0,0,.35)}
+#topo-lock[data-state="locked"]{border-color:#7ab694!important}
+#topo-lock[data-state="mixed"]{border-color:#c7ab69!important}
