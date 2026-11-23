@@ -459,6 +459,18 @@ async function connect(group,existing){if(connecting)return;if(activeGroup?.code
  if(activeGroup)disconnect();const remote=existing||await rpc('devden_register_member',{p_code:group.code,p_member_id:memberId,p_nickname:group.nickname});if(!remote||!remote.document)throw Error('Group not found.');backupSolo();activeGroup={...group,revision:remote.revision};dirty=false;failures=0;remoteConflict=false;notice=null;conflictDraft=null;baseDocument=structuredClone(remote.document);restoreProject(remote.document);navigate(active);lastSaved=JSON.stringify(current());localStorage.setItem(activeKey,group.code);selectedCode=group.code;render();open(false);lastGroupActivity=Date.now();lastRemoteActivity=Date.now();lastRosterCheck=0;schedulePoll(GROUP_POLL_ACTIVE_MS);realtimeStart(activeGroup);emitGroupStatus();refreshRoster(group.code)
  }catch(e){alert('Unable to connect: '+e.message)}finally{connecting=false}}
 let recoveryTimer=null;
+// Preserve uncommitted input, active dialogs and grid keyboard selection.
+let lastWorkspaceInput=0;
+for(const eventName of ['pointerdown','keydown','input','focusin']){
+ content.addEventListener(eventName,()=>{lastWorkspaceInput=Date.now()},true);
+}
+function workspaceEditInProgress(){
+ if(active==='topology'||active==='notes')return false;
+ if(document.querySelector('dialog[open]'))return true;
+ const focused=document.activeElement;
+ if(focused&&content.contains(focused)&&focused.matches('input,textarea,select,[contenteditable="true"],.vlsm-cell-input'))return true;
+ return Date.now()-lastWorkspaceInput<1200;
+}
 window.addEventListener('devden-state-updated',()=>{if(activeGroup&&!applyingRemote){clearTimeout(recoveryTimer);recoveryTimer=setTimeout(()=>saveRecovery(),2000);dirty=true;lastLocalActivity=Date.now();wakeSync(180);emitGroupStatus()}});
 function removed(group){const name=group.name;forgetMissing(group.code);notice='Removed from '+name;render()}
 async function sync(){
@@ -475,6 +487,7 @@ if(!activeGroup||busy||movementPending)return;busy=true;const group=activeGroup;
  failures=0;
  if(lastLocalActivity!==syncStart||window.DevDenSketch?.drawing?.()||(active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag))return;
  if(remote.revision!==group.revision){
+  if(workspaceEditInProgress())return;
   lastRemoteActivity=Date.now();
   if(active==='topology'&&(typeof topoDrag!=='undefined'&&topoDrag||Date.now()-lastLocalActivity<700||lastLocalActivity!==syncStart))return;
   const conflicts=[];const merged=DevDenMerge.reconcile(baseDocument||remote.document,local,remote.document,'',conflicts);
@@ -510,8 +523,7 @@ if(!activeGroup||busy||movementPending)return;busy=true;const group=activeGroup;
    }else{
     applyingRemote=true;
     try{
-     if(active==='topology')applyGroupRemoteProject(merged,local);
-     else{restoreProject(merged);navigate(active)}
+     applyGroupRemoteProject(merged,local);
     }finally{applyingRemote=false}
     local=current();serialized=JSON.stringify(local)
    }

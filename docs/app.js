@@ -2097,6 +2097,29 @@ function applyGroupRemoteProject(item, previous){
  if(!item||item.version!==2||!item.state||!item.topology)return;
  const topologyChanged=JSON.stringify(previous?.topology)!==JSON.stringify(item.topology);
  const chartChanged=JSON.stringify(previous?.state?.networkChart)!==JSON.stringify(item.state.networkChart);
+ // Synchronize the document without needlessly rebuilding unrelated tools.
+ // Rebuilding destroys live table editors, selection, scroll and event handlers.
+ const keysByTool={
+  ipv4:['ipv4','fields'],ipv6:['ipv6','fields'],vlsm:['vlsm','vlsmInventory','columnWidths','fields'],
+  flsm:['flsm','flsmInventory','columnWidths','fields'],v6flsm:['v6flsm','fields'],
+  chart:['networkChart'],checklist:['checklistDevices','checklistSelected'],
+  notes:['notes'],osi:['osiLayer','osiStep','osiDirection','osiScenario'],
+  cli:['cli'],commands:[],reference:[],troubleshooting:[],prefixguide:[]
+ };
+ const visibleKeys=keysByTool[active]||[];
+ const viewChanged=visibleKeys.some(key=>{
+  if(key==='fields'){
+   const prefix=active+':';
+   const pick=value=>Object.fromEntries(Object.entries(value||{}).filter(([k])=>k.startsWith(prefix)));
+   return JSON.stringify(pick(previous?.state?.fields))!==JSON.stringify(pick(item.state.fields));
+  }
+  if(key==='columnWidths'){
+   const prefix=active+'-';
+   const pick=value=>Object.fromEntries(Object.entries(value||{}).filter(([k])=>k.startsWith(prefix)));
+   return JSON.stringify(pick(previous?.state?.columnWidths))!==JSON.stringify(pick(item.state.columnWidths));
+  }
+  return JSON.stringify(previous?.state?.[key])!==JSON.stringify(item.state[key]);
+ });
  state={...structuredClone(defaults),...structuredClone(item.state)};
  topo={...topoDefault(),...structuredClone(item.topology)};
  topo.notes ||= [];
@@ -2109,7 +2132,8 @@ function applyGroupRemoteProject(item, previous){
   // topoRefresh updates existing board DOM and leaves toolbar and viewport intact.
   if(topologyChanged||chartChanged)topoRefresh();
   window.DevDenSketch?.render?.();
- }else{
+ }else if(viewChanged){
+  // Only re-render when the currently visible tool actually received changes.
   navigate(active);
  }
 }
