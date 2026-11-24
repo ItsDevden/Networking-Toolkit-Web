@@ -179,7 +179,7 @@ try{groups=JSON.parse(localStorage.getItem(memberKey)||'[]');if(!Array.isArray(g
 const saveGroups=()=>localStorage.setItem(memberKey,JSON.stringify(groups));
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Checklist navigation belongs to each browser, not the shared document.
-function groupDocument(document){const copy=structuredClone(document);if(copy?.state){delete copy.state.checklistSelected;for(const d of copy.state.checklistDevices||[])delete d.category;}return copy}
+function groupDocument(document){const copy=structuredClone(document);if(copy?.state){delete copy.state.checklistSelected;if(copy.state.notes)copy.state.notes.selected=null;for(const d of copy.state.checklistDevices||[])delete d.category;}return copy}
 const current=()=>groupDocument(projectSnapshot());
 const palette=()=>typeof TOPO_PALETTE!=='undefined'?TOPO_PALETTE:['#8bafff','#68c4a2','#b48bec','#eead6f'];
 const memberColor=id=>{const roster=rosterCache[activeGroup?.code]||[];const position=Math.max(0,roster.findIndex(m=>m.id===id));return palette()[position%palette().length]};
@@ -263,7 +263,8 @@ function updateVisualLocks(){
  const editor=document.getElementById('notes-editor');if(editor&&active==='notes'){
  const pageId=notesPage()?.id, key=pageId?lockKey('notes',pageId):null;
  const allowed=!activeGroup||(key&&ownLock(key));
- editor.contentEditable=allowed?'true':'false';
+ if(editor.contentEditable!==(allowed?'true':'false'))editor.contentEditable=allowed?'true':'false';
+ for(const el of document.querySelectorAll('#notes-stickies-list .notes-sticky-title,#notes-stickies-list .notes-sticky-body'))if(el.contentEditable!==(allowed?'true':'false'))el.contentEditable=allowed?'true':'false';
  editor.classList.toggle('devden-notes-readonly',!allowed);
  editor.title=!allowed&&lockOwner(key)?'This page is being edited by another member':(!allowed?'Click to request editing access':'');
  const status=document.getElementById('notes-status');
@@ -521,7 +522,7 @@ if(!activeGroup||busy||transferPending||movementPending)return;busy=true;const g
   // Remote updates must not interrupt text editing inside a topology object.
   if(active==='topology'&&document.activeElement?.matches('#topo-board input:focus,#topo-board textarea:focus'))return;
   // Never replace a live rich-text editor or capture stale sticky DOM over remote data.
-  if(active==='notes'&&document.activeElement?.closest('#notes-editor,#notes-stickies-list,#notes-toolbar,#notes-name')&&!DevDenMerge.same(merged.state?.notes,local.state?.notes))return;
+  if(active==='notes'&&document.activeElement?.closest('#notes-editor,#notes-stickies-list,#notes-toolbar,#notes-name')&&!DevDenMerge.same(merged.state?.notes?.pages?.find(p=>p.id===notesPage()?.id),local.state?.notes?.pages?.find(p=>p.id===notesPage()?.id)))return;
   group.revision=remote.revision;baseDocument=structuredClone(remote.document);
   if(!DevDenMerge.same(merged,local)){
    applyingRemote=true;

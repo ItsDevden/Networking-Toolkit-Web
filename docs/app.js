@@ -9,7 +9,7 @@ function checkpoint(){if(restoring)return;const snapshot=JSON.stringify(state);i
 function travelHistory(direction){const next=historyIndex+direction;if(next<0||next>=history.length)return;historyIndex=next;restoring=true;state=JSON.parse(history[next]);navigate(active);restoring=false;try{localStorage.setItem(toolkitStorageKey('devden-toolkit-v2'),history[next])}catch{}}
 document.addEventListener('keydown',e=>{if(active==='topology')return;if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const target=e.target;if(target.closest('input,textarea,[contenteditable="true"]'))return;const key=e.key.toLowerCase();if(key==='z'){e.preventDefault();travelHistory(e.shiftKey?1:-1)}else if(key==='y'){e.preventDefault();travelHistory(1)}});
 document.addEventListener('change',e=>{if(active==='cli'||!content.contains(e.target))return;const inp=e.target;if(!inp.id||!['INPUT','SELECT'].includes(inp.tagName)||!['parent','target','count','prefix','group','decimal','hex','binary'].includes(inp.id))return;if(inp.id==='decimal'||inp.id==='hex'||inp.id==='binary'||(active==='ipv6'&&inp.id==='group'))return;state.fields[active+':'+inp.id]=inp.value;checkpoint()});
-function navigate(k){if(window.DevDenSketch)window.DevDenSketch.leave();if(active==='notes'&&k!=='notes')notesCommit();content.classList.remove('notes-content');document.body.classList.remove('topo-fullscreen','chart-fullscreen');active=k;[...nav.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.key===({'ipv6':'ipv4','v6flsm':'flsm'}[k]||k)));({ipv4:renderIpv4,ipv6:renderIpv6,vlsm:renderVlsm,flsm:renderFlsm,v6flsm:renderV6Flsm,commands:renderCommands,reference:renderReference,troubleshooting:renderTroubleshooting,cli:renderCli,checklist:renderChecklist,chart:renderNetworkChart,topology:renderTopology,osi:renderOSI,prefixguide:renderPrefixGuide,notes:()=>renderNotes()}[k])();polishWorkspace();window.DevDenSketch?.render();}
+function navigate(k){if(window.DevDenSketch)window.DevDenSketch.leave();if(active==='notes'&&k!=='notes')notesLeavePage();content.classList.remove('notes-content');document.body.classList.remove('topo-fullscreen','chart-fullscreen');active=k;[...nav.querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.key===({'ipv6':'ipv4','v6flsm':'flsm'}[k]||k)));({ipv4:renderIpv4,ipv6:renderIpv6,vlsm:renderVlsm,flsm:renderFlsm,v6flsm:renderV6Flsm,commands:renderCommands,reference:renderReference,troubleshooting:renderTroubleshooting,cli:renderCli,checklist:renderChecklist,chart:renderNetworkChart,topology:renderTopology,osi:renderOSI,prefixguide:renderPrefixGuide,notes:()=>renderNotes()}[k])();polishWorkspace();window.DevDenSketch?.render();}
 for(const [group,items] of sections){const section=el('section',{class:'nav-section','data-nav-group':group});section.append(el('div',{class:'nav-title'},group));nav.append(section);for(const [name,k] of items){const b=el('button',{'data-key':k},'');b.title=name;b.setAttribute('aria-label',name);const icon=el('i',{class:'nav-icon','aria-hidden':'true'});icon.innerHTML=navIcon(k);b.append(icon,el('span',{},name));b.onclick=()=>navigate(k);section.append(b)}}$('logo').onclick=()=>$('sidebar').classList.toggle('collapsed');
 const title=(t,sub='')=>{
  content.innerHTML='';
@@ -2136,6 +2136,16 @@ function applyGroupRemoteProject(item, previous){
   return JSON.stringify(previous?.state?.[key])!==JSON.stringify(item.state[key]);
  });
  const nextState={...structuredClone(defaults),...structuredClone(item.state)};restoreLocalChartSSH(nextState);
+ // Selected note is local UI state. Preserve model identity for unchanged live pages.
+ let keepNotesEditor=false;
+ if(state.notes&&nextState.notes){
+  const old=state.notes, incoming=nextState.notes, selected=old.selected;
+  incoming.selected=incoming.pages?.some(p=>p.id===selected)?selected:incoming.pages?.[0]?.id||null;
+  const oldPage=old.pages?.find(p=>p.id===selected),newPage=incoming.pages?.find(p=>p.id===selected);
+  keepNotesEditor=!!oldPage&&!!newPage&&JSON.stringify(oldPage)===JSON.stringify(newPage)&&!!$('notes-editor');
+  if(keepNotesEditor){incoming.pages=incoming.pages.map(p=>p.id===selected?oldPage:p);Object.assign(old,incoming);nextState.notes=old;}
+ }
+
  // Keep unchanged model references alive for event handlers in the current tool.
  for(const key of Object.keys(nextState))if(JSON.stringify(state[key])===JSON.stringify(nextState[key]))nextState[key]=state[key];
  state=nextState;
@@ -2150,6 +2160,8 @@ function applyGroupRemoteProject(item, previous){
   // topoRefresh updates existing board DOM and leaves toolbar and viewport intact.
   if(topologyChanged||chartChanged)topoRefresh();
   window.DevDenSketch?.render?.();
+ }else if(active==='notes'&&keepNotesEditor){
+  notesRefreshPageList();window.DevDenCollab?.paint?.();
  }else if(viewChanged){
   // Only re-render when the currently visible tool actually received changes.
   navigate(active);
