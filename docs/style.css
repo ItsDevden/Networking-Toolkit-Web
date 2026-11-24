@@ -909,3 +909,6 @@ body:has(#topo-board) #topo-board .topo-note.devden-remote-lock{cursor:grab!impo
 #topo-board .devden-collab-tag{box-shadow:0 2px 8px rgba(0,0,0,.35)}
 #topo-lock[data-state="locked"]{border-color:#7ab694!important}
 #topo-lock[data-state="mixed"]{border-color:#c7ab69!important}
+
+/* Native text selection inside topology notes, including sticky titles. */
+#topo-board .topo-note :is(input,textarea){pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text!important;touch-action:auto!important}

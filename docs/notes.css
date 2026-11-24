@@ -145,3 +145,27 @@
 
 /* A leased notes page cannot be modified until the owner is confirmed. */
 .devden-notes-readonly{cursor:default;opacity:.92}
+
+/* Dedicated print root, independent of the scrolling application shell. */
+@media print {
+ @page {size:A4 portrait;margin:14mm 15mm}
+ html,body.notes-print {height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;display:block!important;margin:0!important;padding:0!important;background:white!important;}
+ body.notes-print > :not(#notes-print-pages) {display:none!important}
+ body.notes-print > #notes-print-pages {display:block!important;position:static!important;width:auto!important;height:auto!important;overflow:visible!important;color:#202832!important;background:white!important;}
+ .notes-print-page {width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important;break-before:auto;break-after:auto!important;page-break-after:auto!important;}
+ .notes-print-page + .notes-print-page {break-before:page;page-break-before:always;}
+ .notes-print-body {overflow-wrap:anywhere;line-height:1.45!important;}
+ .notes-print-body p,.notes-print-body div {min-height:0;}
+ .notes-print-body p {margin:0 0 .35em;orphans:2;widows:2;}
+ .notes-print-body h1,.notes-print-body h2,.notes-print-body h3 {break-after:avoid;page-break-after:avoid;}
+ .notes-print-body .notes-figure {display:block;max-width:100%;margin:8px 0;break-inside:avoid;}
+ .notes-print-body img {max-width:100%!important;max-height:225mm!important;height:auto!important;object-fit:contain;}
+ .notes-print-body figcaption:empty:before {content:none!important;}
+ .notes-print-body table {width:100%;border-collapse:collapse;table-layout:fixed;break-inside:auto;}
+ .notes-print-body td,.notes-print-body th {border:1px solid #adb5bd;padding:4px;overflow-wrap:anywhere;}
+ .notes-print-body thead {display:table-header-group;}
+ .notes-print-body .notes-drawing {resize:none;overflow:visible;max-width:100%;left:0!important;top:0!important;}
+ .notes-print-body .notes-anchor {display:none!important;}
+ .notes-print-canvas img {display:block;width:100%;height:auto;max-height:265mm;object-fit:contain;}
+ .notes-print-ink {max-height:100%;}
+}

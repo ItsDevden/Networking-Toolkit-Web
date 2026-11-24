@@ -9,6 +9,8 @@ old = json.loads(out.read_text(encoding="utf-8").split("=", 1)[1].strip().rstrip
 new = {
     "script": (source / "app.js").read_text(encoding="utf-8"),
     "style": (source / "style.css").read_text(encoding="utf-8"),
+    "notesScript": (source / "notes.js").read_text(encoding="utf-8"),
+    "notesStyle": (source / "notes.css").read_text(encoding="utf-8"),
     "logo": old["logo"],
     "reaction67": old["reaction67"],
 }
