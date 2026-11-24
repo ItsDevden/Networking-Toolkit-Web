@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 
 root = Path(__file__).resolve().parent.parent
-source = root / "Source"
+source = root / "docs"
 out = source / "offline-source.js"
 old = json.loads(out.read_text(encoding="utf-8").split("=", 1)[1].strip().rstrip(";"))
 new = {

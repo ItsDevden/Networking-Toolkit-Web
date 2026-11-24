@@ -169,3 +169,5 @@
  .notes-print-canvas img {display:block;width:100%;height:auto;max-height:265mm;object-fit:contain;}
  .notes-print-ink {max-height:100%;}
 }
+/* Independent scroll containers: sticky edits must not move the document. */
+@media(min-width:741px){.notes-document-layout{align-items:start;min-height:0}.notes-document-layout .notes-paper-wrap,.notes-side-panel{min-height:0;height:clamp(280px,calc(100dvh - 260px),100dvh);overscroll-behavior:contain;overflow-anchor:none;scrollbar-gutter:stable}.notes-actions #notes-status{min-width:120px;white-space:nowrap}}

@@ -522,7 +522,7 @@ if(!activeGroup||busy||transferPending||movementPending)return;busy=true;const g
   // Remote updates must not interrupt text editing inside a topology object.
   if(active==='topology'&&document.activeElement?.matches('#topo-board input:focus,#topo-board textarea:focus'))return;
   // Never replace a live rich-text editor or capture stale sticky DOM over remote data.
-  if(active==='notes'&&document.activeElement?.closest('#notes-editor,#notes-stickies-list,#notes-toolbar,#notes-name')&&!DevDenMerge.same(merged.state?.notes?.pages?.find(p=>p.id===notesPage()?.id),local.state?.notes?.pages?.find(p=>p.id===notesPage()?.id)))return;
+  if(active==='notes'&&(document.activeElement?.closest('.notes-workspace')||Date.now()-lastWorkspaceInput<1200)&&!DevDenMerge.same(merged.state?.notes?.pages?.find(p=>p.id===notesPage()?.id),local.state?.notes?.pages?.find(p=>p.id===notesPage()?.id)))return;
   group.revision=remote.revision;baseDocument=structuredClone(remote.document);
   if(!DevDenMerge.same(merged,local)){
    applyingRemote=true;

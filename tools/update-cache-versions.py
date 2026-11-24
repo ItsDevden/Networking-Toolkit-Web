@@ -4,10 +4,10 @@ import hashlib
 import re
 
 root = Path(__file__).resolve().parent.parent
-source = root / "Source"
+source = root / "docs"
 index = source / "index.html"
 html = index.read_text(encoding="utf-8")
-assets = {"logo.png": root / "Other" / "logo.png"}
+assets = {"logo.png": source / "logo.png"}
 assets.update({name: source / name for name in (
     "style.css", "offline-source.js", "app.js", "notes.js",
     "notes.css", "group.js", "group-config.js", "group-merge.js", "admin.js"
