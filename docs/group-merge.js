@@ -2,7 +2,7 @@
 /* Three-way merge of independent project edits. Does not silently overwrite
    concurrent changes to the same scalar field. Shared by browser and tests. */
 (function(root){
- const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+ const same=(a,b)=>{if(a===b)return true;if(a===null||b===null||typeof a!==typeof b||typeof a!=='object')return false;if(Array.isArray(a)||Array.isArray(b))return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((x,i)=>same(x,b[i]));const ak=Object.keys(a),bk=Object.keys(b);return ak.length===bk.length&&ak.every(k=>Object.hasOwn(b,k)&&same(a[k],b[k]))};
  const clone=x=>x===undefined?undefined:structuredClone(x);
  // Safely interleave two independent single-span edits to the same HTML page.
  // This is not a CRDT: complex concurrent formatting or overlapping edits remain conflicts.
@@ -25,6 +25,9 @@
   if(same(ours,theirs))return clone(ours);
   if(same(ours,base))return clone(theirs);
   if(same(theirs,base))return clone(ours);
+  if(/^\/topology\/(counter|zoneCounter|noteCounter)$/.test(path)&&typeof ours==='number'&&typeof theirs==='number')return Math.max(ours,theirs);
+  // Merge independent checklist checkbox toggles by membership, rather than whole array.
+  if(/^\/state\/checklistDevices\/[^/]+\/checked$/.test(path)&&[base,ours,theirs].every(a=>Array.isArray(a)&&a.every(x=>typeof x==='string'))){const all=new Set([...base,...ours,...theirs]);return [...all].filter(x=>{const b=base.includes(x),o=ours.includes(x),t=theirs.includes(x);return o===b?t:t===b?o:o})}
   // Position-only collisions are intentionally cooperative. The server's
   // atomic move RPC serializes completed drags; its committed x/y wins.
   // Other fields keep ordinary three-way conflict protection.
@@ -41,6 +44,7 @@
   }
   if(path.startsWith('/state/sketches/')&&base===undefined&&Array.isArray(ours)&&Array.isArray(theirs))base=[];
   const indexed=a=>Array.isArray(a)&&a.every(x=>plain(x)&&typeof x.id==='string');
+  if(base===undefined&&indexed(ours)&&indexed(theirs))base=[];
   if(indexed(base)&&indexed(ours)&&indexed(theirs)){
    const b=new Map(base.map(x=>[x.id,x])),o=new Map(ours.map(x=>[x.id,x])),t=new Map(theirs.map(x=>[x.id,x]));
    const ids=[...new Set([...theirs.map(x=>x.id),...ours.map(x=>x.id)])];

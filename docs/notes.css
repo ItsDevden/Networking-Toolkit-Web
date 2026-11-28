@@ -171,3 +171,7 @@
 }
 /* Independent scroll containers: sticky edits must not move the document. */
 @media(min-width:741px){.notes-document-layout{align-items:start;min-height:0}.notes-document-layout .notes-paper-wrap,.notes-side-panel{min-height:0;height:clamp(280px,calc(100dvh - 260px),100dvh);overscroll-behavior:contain;overflow-anchor:none;scrollbar-gutter:stable}.notes-actions #notes-status{min-width:120px;white-space:nowrap}}
+
+/* Sticky notes retired; keep only the document editor. */
+.notes-content .notes-document-layout{grid-template-columns:minmax(0,1fr)!important}.notes-content .notes-side-panel{display:none!important}.notes-content .notes-paper-wrap{background:#1c242c}.notes-content .notes-workspace,.notes-content .notes-workspace-head,.notes-content .notes-toolbar{background:#232c34;border-color:#394953}.notes-content .notes-hint{color:#a7bac5}
+.notes-lan-reference{border:1px solid #849d9a;border-left:3px solid #427e76;padding:8px 10px;margin:12px 0;background:#f2f7f6;color:#233c39}.notes-lan-reference::before{content:'LINKED LAN';display:block;font:600 10px 'Segoe UI',sans-serif;letter-spacing:.08em;color:#427e76;margin-bottom:4px}.notes-lan-reference h3{margin:3px 0 7px}.notes-lan-reference table{font-size:12px}

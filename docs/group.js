@@ -179,7 +179,7 @@ try{groups=JSON.parse(localStorage.getItem(memberKey)||'[]');if(!Array.isArray(g
 const saveGroups=()=>localStorage.setItem(memberKey,JSON.stringify(groups));
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Checklist navigation belongs to each browser, not the shared document.
-function groupDocument(document){const copy=structuredClone(document);if(copy?.state){delete copy.state.checklistSelected;if(copy.state.notes)copy.state.notes.selected=null;for(const d of copy.state.checklistDevices||[])delete d.category;}return copy}
+function groupDocument(document){const copy=structuredClone(document);if(copy?.state){delete copy.state.checklistSelected;if(copy.state.notes)copy.state.notes.selected=null;for(const d of copy.state.checklistDevices||[])delete d.category;}if(copy?.topology){delete copy.topology.view;delete copy.topology.cable;}if(copy?.state&&copy?.topology){lanMigration(copy.state,copy.topology);for(const subnet of copy.state.networkChart?.subnets||[]){delete subnet.ssh;subnet.sshEntries=[];}}return JSON.parse(JSON.stringify(copy))}
 const current=()=>groupDocument(projectSnapshot());
 const palette=()=>typeof TOPO_PALETTE!=='undefined'?TOPO_PALETTE:['#8bafff','#68c4a2','#b48bec','#eead6f'];
 const memberColor=id=>{const roster=rosterCache[activeGroup?.code]||[];const position=Math.max(0,roster.findIndex(m=>m.id===id));return palette()[position%palette().length]};
@@ -264,7 +264,6 @@ function updateVisualLocks(){
  const pageId=notesPage()?.id, key=pageId?lockKey('notes',pageId):null;
  const allowed=!activeGroup||(key&&ownLock(key));
  if(editor.contentEditable!==(allowed?'true':'false'))editor.contentEditable=allowed?'true':'false';
- for(const el of document.querySelectorAll('#notes-stickies-list .notes-sticky-title,#notes-stickies-list .notes-sticky-body'))if(el.contentEditable!==(allowed?'true':'false'))el.contentEditable=allowed?'true':'false';
  editor.classList.toggle('devden-notes-readonly',!allowed);
  editor.title=!allowed&&lockOwner(key)?'This page is being edited by another member':(!allowed?'Click to request editing access':'');
  const status=document.getElementById('notes-status');
@@ -487,8 +486,8 @@ for(const eventName of ['pointerdown','keydown','input','focusin']){
  content.addEventListener(eventName,()=>{lastWorkspaceInput=Date.now()},true);
 }
 function workspaceEditInProgress(){
- if(active==='topology'||active==='notes')return false;
- if(document.querySelector('dialog[open],.chart-ssh-draft'))return true;
+ if(active==='topology'||active==='notes'||active==='chart')return false;
+ if(document.querySelector('dialog[open]:not([data-merge-safe]),.chart-ssh-draft'))return true;
  const focused=document.activeElement;
  if(focused&&content.contains(focused)&&focused.matches('input,textarea,select,[contenteditable="true"],.vlsm-cell-input'))return true;
  return Date.now()-lastWorkspaceInput<1200;
@@ -508,15 +507,16 @@ if(!activeGroup||busy||transferPending||movementPending)return;busy=true;const g
  if(activeGroup!==group)return;
  remote.document=groupDocument(remote.document);
  failures=0;
- if(lastLocalActivity!==syncStart||window.DevDenSketch?.drawing?.()||(active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag))return;
+ if(active==='chart'&&lastLocalActivity!==syncStart){local=current();serialized=JSON.stringify(local);dirty=serialized!==lastSaved;}
+ if((active!=='chart'&&lastLocalActivity!==syncStart)||window.DevDenSketch?.drawing?.()||(active==='topology'&&typeof topoDrag!=='undefined'&&topoDrag))return;
  if(remote.revision!==group.revision){
-  if(workspaceEditInProgress())return;
+  if(workspaceEditInProgress()){const b=baseDocument?.state||{},r=remote.document?.state||{};const keys={vlsm:['vlsm','fields'],flsm:['flsm','fields'],v6flsm:['v6flsm','fields'],ipv4:['ipv4','fields'],ipv6:['ipv6','fields'],checklist:['checklistDevices']}[active]||[];if(keys.some(k=>!DevDenMerge.same(b[k],r[k])))return;}
   lastRemoteActivity=Date.now();
   if(active==='topology'&&(typeof topoDrag!=='undefined'&&topoDrag||Date.now()-lastLocalActivity<700||lastLocalActivity!==syncStart))return;
   const conflicts=[];const merged=DevDenMerge.reconcile(baseDocument||remote.document,local,remote.document,'',conflicts);
   if(conflicts.length){
    // Preserve unresolved edits for explicit recovery without disconnecting anyone.
-   conflictDraft=structuredClone(local);notice='Overlapping edit saved for recovery';
+   conflictDraft=structuredClone(local);notice='Overlapping edit saved for recovery';saveRecovery(group);
   }
   if(active==='topology'&&Date.now()-lastLocalActivity<650)return;
   // Remote updates must not interrupt text editing inside a topology object.
